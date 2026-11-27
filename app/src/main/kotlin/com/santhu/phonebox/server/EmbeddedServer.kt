@@ -1324,24 +1324,21 @@ class EmbeddedServer(
                 }
                 get("/api/camera.mjpeg") {
                     if (!checkAuth(call)) return@get
-                    call.response.header(io.ktor.http.HttpHeaders.CacheControl, "no-store")
-                    call.respond(object : io.ktor.server.response.OutgoingContent.WriteChannelContent() {
-                        override val contentType = ContentType.parse("multipart/x-mixed-replace; boundary=fridaycam")
-                        override suspend fun writeTo(channel: io.ktor.utils.io.ByteWriteChannel) {
-                            repeat(36000) {
-                                if (channel.isClosedForWrite) return@repeat
-                                val frame = com.santhu.phonebox.system.CameraStreamController.latestJpeg()
-                                if (frame != null && frame.isNotEmpty()) {
-                                    val header = "--fridaycam\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.size}\r\n\r\n".toByteArray()
-                                    channel.writeFully(header, 0, header.size)
-                                    channel.writeFully(frame, 0, frame.size)
-                                    channel.writeFully("\r\n".toByteArray(), 0, 2)
-                                    channel.flush()
-                                }
-                                kotlinx.coroutines.delay(100L)
+                    call.response.header(HttpHeaders.CacheControl, "no-store")
+                    call.respondBytesWriter(contentType = ContentType.parse("multipart/x-mixed-replace; boundary=fridaycam")) {
+                        repeat(36000) {
+                            if (isClosedForWrite) return@repeat
+                            val frame = com.santhu.phonebox.system.CameraStreamController.latestJpeg()
+                            if (frame != null && frame.isNotEmpty()) {
+                                val header = "--fridaycam\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.size}\r\n\r\n".toByteArray()
+                                writeFully(header, 0, header.size)
+                                writeFully(frame, 0, frame.size)
+                                writeFully("\r\n".toByteArray(), 0, 2)
+                                flush()
                             }
+                            kotlinx.coroutines.delay(100L)
                         }
-                    })
+                    }
                 }
 
                 // --- Clipboard Vault ---
