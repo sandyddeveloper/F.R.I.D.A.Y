@@ -1,0 +1,21 @@
+{
+  "name": "friday-control",
+  "version": "2.0.0",
+  "description": "F.R.I.D.A.Y. — Open-source Mobile & PC Control Center (LAN + Anywhere Relay + 6-digit mutual pairing)",
+  "type": "module",
+  "bin": {
+    "friday": "./bin/phonebox.mjs",
+    "phonebox": "./bin/phonebox.mjs"
+  },
+  "scripts": {
+    "connect": "node ./bin/phonebox.mjs connect",
+    "start": "node ./bin/phonebox.mjs start",
+    "stop": "node ./bin/phonebox.mjs stop",
+    "status": "node ./bin/phonebox.mjs status",
+    "relay": "node ./relay/server.mjs"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}

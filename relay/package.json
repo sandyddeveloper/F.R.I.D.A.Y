@@ -1,0 +1,13 @@
+{
+  "name": "friday-relay",
+  "version": "2.0.0",
+  "description": "Zero-dependency HTTP tunnel relay for connecting F.R.I.D.A.Y. Mobile & Laptop from anywhere",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

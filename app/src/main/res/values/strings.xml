@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">F.R.I.D.A.Y.</string>
+    <string name="channel_server">F.R.I.D.A.Y. Server Status</string>
+    <string name="channel_alerts">F.R.I.D.A.Y. Alerts</string>
+    <string name="accessibility_desc">Allows your Laptop Admin Console and saved macros to navigate, tap, and automate apps on this phone without root.</string>
+</resources>

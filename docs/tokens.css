@@ -1,0 +1,26 @@
+:root {
+  color-scheme: dark;
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;
+  --text-xs: 0.8125rem; --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.25rem; --text-xl: 1.5625rem; --text-2xl: 1.953rem; --text-3xl: 2.441rem;
+  --text-display-s: clamp(2.15rem, 3.6vw + 0.5rem, 3.5rem); --text-display: clamp(2.6rem, 4.4vw + 0.9rem, 4.75rem);
+  --text-section: clamp(2rem, 2.5vw + 1rem, 3.25rem); --text-title: clamp(1.25rem, 0.75vw + 0.875rem, 1.55rem); --text-lead: clamp(1.0625rem, 0.35vw + 0.95rem, 1.28rem);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
+  --color-error: oklch(68% 0.17 25); --color-success: oklch(72% 0.14 155);
+  --container: 1440px; --gutter: 64px; --gap-columns: 32px; --section-gap-s: 120px; --section-gap: 144px; --section-gap-l: 176px;
+  --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
+  --color-paper: oklch(13.2% 0.022 252); --color-paper-2: oklch(16.4% 0.024 252); --color-paper-3: oklch(20.2% 0.026 248);
+  --color-ink: oklch(93.8% 0.01 230); --color-ink-2: oklch(82% 0.016 235); --color-muted: oklch(70% 0.018 242);
+  --color-rule: oklch(27.5% 0.024 248); --color-rule-2: oklch(22% 0.022 250);
+  --color-accent: oklch(76% 0.125 182); --color-accent-soft: oklch(24% 0.048 184); --color-accent-ink: oklch(16% 0.032 185); --color-focus: oklch(82% 0.13 182);
+  --color-band: oklch(15.5% 0.026 244); --color-band-ink: oklch(94% 0.01 230);
+  --color-slot: oklch(18% 0.024 248);
+  --edge-light: inset 0 1px 0 oklch(95% 0.02 220 / 0.14);
+  --shadow-part: 0 1px 0 oklch(8% 0.02 250 / 0.55), 0 10px 20px -8px oklch(6% 0.02 250 / 0.6);
+  --shadow-panel: 0 1px 0 oklch(8% 0.02 250 / 0.5), 0 24px 48px -16px oklch(5% 0.02 250 / 0.65);
+  --font-display: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-outlier: "JetBrains Mono", ui-monospace, monospace;
+  --radius-card: 20px; --radius-part: 10px; --radius-pill: 999px; --rule-hair: 1px;
+  --tracking-display: -0.035em; --display-weight: 400;
+}

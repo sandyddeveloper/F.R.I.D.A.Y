@@ -1,0 +1,25 @@
+# Android / Gradle
+.gradle/
+build/
+app/build/
+local.properties
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Runtime & Personal Bridge State
+node_modules/
+bridge/.telemetry.lock
+bridge/.watch.lock
+bridge/.phonebox-active.json
+bridge/.code-state.json
+bridge/.quota-cache.json
+bridge/.pre-edit/
+bridge/.watch-baselines/
+bridge/phonebox-target.json
+config.env
+.hallmark/
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>F.R.I.D.A.Y. | Mobile and PC Control Center</title>
+  <meta name="description" content="Turn an Android phone into a paired secondary monitor, 3D audio stage, wireless trackpad, and telemetry console over Wi-Fi or relay.">
+  <link rel="icon" type="image/png" href="./assets/friday-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500&family=Instrument+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script>document.documentElement.classList.add('js');</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <div class="notice-band">
+    <div class="container notice-band__inner">
+      <span>Open-source Android server with Windows host bridge and self-host relay</span>
+      <span>MIT license</span>
+    </div>
+  </div>
+
+  <header class="site-nav">
+    <div class="container site-nav__bar">
+      <a class="brand-link" href="#top" aria-label="F.R.I.D.A.Y. home">
+        <img src="./assets/friday-logo.png" width="32" height="32" alt="">
+        <span>F.R.I.D.A.Y.</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#security">Pairing</a>
+        <a href="#screens">Screens</a>
+        <a href="#capabilities">Bridge</a>
+        <a href="#install">Commands</a>
+      </nav>
+      <a class="btn btn--sm btn--primary" href="#install">Download APK</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="container hero__grid">
+        <div class="hero__copy">
+          <h1>Control phone and laptop from one surface</h1>
+          <p class="lead">Stream laptop telemetry, audio mix, and remote controls to Android over pairing.</p>
+          <div class="hero__actions">
+            <a class="btn btn--primary" href="https://github.com/sandyddeveloper/F.R.I.D.A.Y.">Download from GitHub</a>
+            <a class="btn" href="#screens">View live screens</a>
+          </div>
+          <code class="cli-snippet">friday connect</code>
+        </div>
+        <figure class="hero__figure">
+          <div class="capture" data-slot="hero" data-kind="product" data-alt="F.R.I.D.A.Y. Laptop Hardware screen showing live CPU, RTX GPU, memory, and network graphs">
+            <img src="./assets/screens/laptop-hw.png" width="2400" height="1080" alt="F.R.I.D.A.Y. Laptop Hardware monitor running on Android with live CPU, GPU, memory, and ping graphs" fetchpriority="high">
+          </div>
+          <figcaption class="caption">Live Ryzen CPU, RTX GPU, storage, and ping telemetry streamed to Android.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="security">
+      <div class="container split-band">
+        <div class="split-band__copy">
+          <h2>Pair every device with six digits</h2>
+          <p>Protected endpoints stay locked until a phone user approves the laptop request and confirms the matching six-digit code.</p>
+          <dl class="compare-list">
+            <div>
+              <dt>Before pairing</dt>
+              <dd>Remote state and control routes reject requests with HTTP 401.</dd>
+            </div>
+            <div>
+              <dt>After six-digit confirmation</dt>
+              <dd>The laptop stores a cryptographic device token under your user profile.</dd>
+            </div>
+          </dl>
+          <ol class="pair-steps">
+            <li>Run <code class="cmd-code">friday connect</code> on Windows to discover Wi-Fi or relay targets.</li>
+            <li>Approve the popup prompt on your Android phone screen.</li>
+            <li>Enter the six digits shown on the phone into your terminal.</li>
+          </ol>
+        </div>
+        <figure class="screen-figure" data-reveal style="--i:0">
+          <div class="capture" data-slot="pairing" data-kind="product" data-alt="F.R.I.D.A.Y. Laptop Pairing Request approval dialog on Android">
+            <img src="./assets/screens/pair-request.png" width="2400" height="1080" alt="Android prompt displaying Laptop Pairing Request with Deny and Allow buttons" loading="lazy">
+          </div>
+          <figcaption class="caption">Every laptop authorization begins on the physical phone screen.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section--band" id="screens">
+      <div class="container">
+        <div class="section__head">
+          <h2>Separate screens for phone and laptop</h2>
+          <p>Switch between live music controls, device sensors, hardware graphs, and the grouped directory without repeated widgets.</p>
+        </div>
+
+        <div class="switch" data-switch>
+          <div class="tablist" role="tablist" aria-label="F.R.I.D.A.Y. application screens">
+            <button type="button" class="tab-btn" role="tab" aria-selected="true" aria-controls="panel-music" id="tab-music">Music studio</button>
+            <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-mobhw" id="tab-mobhw" tabindex="-1">Mobile hardware</button>
+            <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-all" id="tab-all" tabindex="-1">Page directory</button>
+            <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-home" id="tab-home" tabindex="-1">Mobile home</button>
+          </div>
+
+          <div class="switch-stage">
+            <div role="tabpanel" id="panel-music" aria-labelledby="tab-music">
+              <figure class="screen-figure">
+                <div class="capture capture--showcase" data-slot="screen-music" data-kind="product" data-alt="Music Studio with SMTC media playback, 3D audio device stage, and per-app mixer">
+                  <img src="./assets/screens/music-studio.png" width="2400" height="1080" alt="Music Studio showing Windows media controls beside a 3D Realtek speaker model and app mixer" loading="lazy">
+                </div>
+                <figcaption class="caption">Windows SMTC playback, drag-to-orbit 3D audio hardware stage, and per-app volume mixer.</figcaption>
+              </figure>
+            </div>
+
+            <div role="tabpanel" id="panel-mobhw" aria-labelledby="tab-mobhw" hidden>
+              <figure class="screen-figure">
+                <div class="capture capture--showcase" data-slot="screen-mobhw" data-kind="product" data-alt="Mobile Hardware monitor with 3D phone chassis and live battery thermal curves">
+                  <img src="./assets/screens/mobile-hw.png" width="2400" height="1080" alt="Mobile Hardware dashboard showing SM8250 CPU, thermal battery draw, RAM, and Wi-Fi rate" loading="lazy">
+                </div>
+                <figcaption class="caption">Android CPU clock, battery wattage, storage capacity, and interactive 3D phone model.</figcaption>
+              </figure>
+            </div>
+
+            <div role="tabpanel" id="panel-all" aria-labelledby="tab-all" hidden>
+              <figure class="screen-figure">
+                <div class="capture capture--showcase" data-slot="screen-all" data-kind="product" data-alt="Grouped page directory splitting mobile pages from laptop control pages">
+                  <img src="./assets/screens/all-pages.png" width="2400" height="1080" alt="Overview modal separating five Mobile Server Pages from eight Laptop and PC Pages" loading="lazy">
+                </div>
+                <figcaption class="caption">Five mobile pages and eight laptop pages cleanly separated in the overview switcher.</figcaption>
+              </figure>
+            </div>
+
+            <div role="tabpanel" id="panel-home" aria-labelledby="tab-home" hidden>
+              <figure class="screen-figure">
+                <div class="capture capture--showcase capture--tall-frame" data-slot="screen-home" data-kind="product" data-alt="Portrait Mobile Home page with QR pairing code, quick audio controls, and live sensors">
+                  <img src="./assets/screens/mobile-home.png" width="1080" height="2400" alt="Portrait Mobile Home showing digital clock, QR pairing target, controls, tasks, and sensors" loading="lazy">
+                </div>
+                <figcaption class="caption">Portrait Mobile Home grid with instant pairing QR, hardware toggles, and live lux/voltage telemetry.</figcaption>
+              </figure>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="capabilities">
+      <div class="container">
+        <div class="section__head">
+          <h2>One persistent Windows host bridge</h2>
+          <p>In-process WinRT, CoreAudio, and UI automation run inside a hidden host without opening background terminals.</p>
+        </div>
+
+        <dl class="rows-list">
+          <div class="rows-item">
+            <dt>Wireless trackpad and screen</dt>
+            <dd>Move the pointer, scroll, send shortcuts, and view desktop frames on the phone screen.</dd>
+          </div>
+          <div class="rows-item">
+            <dt>Process exit pings</dt>
+            <dd>Watch active Windows PIDs and alert the phone when long builds finish or go idle.</dd>
+          </div>
+          <div class="rows-item">
+            <dt>Call-aware desktop mute</dt>
+            <dd>Mute laptop media audio on incoming Android call notifications and restore afterward.</dd>
+          </div>
+          <div class="rows-item">
+            <dt>Desktop OTP and quick reply</dt>
+            <dd>Receive verification codes with one-click copy and inline desktop replies to phone notifications.</dd>
+          </div>
+          <div class="rows-item">
+            <dt>Wi-Fi and self-hosted relay</dt>
+            <dd>Prefer direct LAN first and route via Tailscale or the zero-dependency relay outside home.</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section section--wide-gap" id="install">
+      <div class="container">
+        <div class="section__head">
+          <h2>Install on Android and Windows</h2>
+          <p>Requires Android 8 or newer for the APK and Node 18 or newer on your PC.</p>
+        </div>
+
+        <table class="cmd-table">
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th>Requirement</th>
+              <th>Command</th>
+              <th>Copy</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Build Android APK</td>
+              <td>JDK 17 and Android SDK</td>
+              <td><code class="cmd-code">./gradlew assembleDebug</code></td>
+              <td><button type="button" class="btn btn--sm" data-copy="./gradlew assembleDebug">Copy command</button></td>
+            </tr>
+            <tr>
+              <td>Pair laptop via six digits</td>
+              <td>Node 18 on Windows</td>
+              <td><code class="cmd-code">friday connect</code></td>
+              <td><button type="button" class="btn btn--sm" data-copy="friday connect">Copy command</button></td>
+            </tr>
+            <tr>
+              <td>Check link and bridge daemon</td>
+              <td>Paired credentials</td>
+              <td><code class="cmd-code">friday status</code></td>
+              <td><button type="button" class="btn btn--sm" data-copy="friday status">Copy command</button></td>
+            </tr>
+            <tr>
+              <td>Launch anywhere relay</td>
+              <td>Node 18 VPS or host</td>
+              <td><code class="cmd-code">PORT=8787 node relay/server.mjs</code></td>
+              <td><button type="button" class="btn btn--sm" data-copy="PORT=8787 node relay/server.mjs">Copy command</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="copy-note" id="copyStatus" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="close-band" id="get-started">
+      <div class="container close-band__grid">
+        <div class="close-band__copy">
+          <h2>Pair your devices in under two minutes</h2>
+          <p>Clone the open-source repository, install the APK, and confirm the six-digit code on your phone.</p>
+          <div class="hero__actions">
+            <a class="btn btn--primary" href="https://github.com/sandyddeveloper/F.R.I.D.A.Y.">Open repository on GitHub</a>
+            <a class="btn" href="#top">Back to overview</a>
+          </div>
+        </div>
+        <figure class="screen-figure">
+          <div class="capture capture--tall capture--tall-frame" data-slot="close-phone" data-kind="product" data-alt="Portrait F.R.I.D.A.Y. phone screen paired and connected">
+            <img src="./assets/screens/mobile-home.png" width="1080" height="2400" alt="Paired Android F.R.I.D.A.Y. interface showing live connection and pairing QR" loading="lazy">
+          </div>
+        </figure>
+      </div>
+    </section>
+  </main>
+
+  <footer class="colophon">
+    <div class="container colophon__inner">
+      <span>F.R.I.D.A.Y. Control Center, open-source MIT software by sandyddeveloper.</span>
+      <nav class="colophon__links" aria-label="Footer links">
+        <a href="https://github.com/sandyddeveloper/F.R.I.D.A.Y.">GitHub repository</a>
+        <a href="#security">Mutual pairing</a>
+        <a href="#screens">Screens</a>
+        <a href="#install">Install guide</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="./app.js" defer></script>
+  <script>window.hallmarkSlots = (m) => { for (const [k, v] of Object.entries(m)) { const s = document.querySelector(`[data-slot="${k}"]`); if (!s) continue; const im = new Image(); im.src = typeof v === 'string' ? v : v.src; im.alt = (typeof v === 'object' && v.alt) || s.dataset.alt || ''; s.querySelectorAll(':scope > img').forEach((o) => o.remove()); s.prepend(im); } };
+document.querySelectorAll('[data-slot] img').forEach((i) => { if (i.complete && !i.naturalWidth) i.remove(); else i.addEventListener('error', () => i.remove(), { once: true }); });</script>
+</body>
+</html>

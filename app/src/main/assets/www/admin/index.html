@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>F.R.I.D.A.Y. — Real-Time Mobile &amp; PC Control Center</title>
+  <link rel="icon" type="image/png" href="/shared/friday-logo.png">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sb-top">
+        <div class="brand-badge"><img src="/shared/friday-logo.png" alt="F.R.I.D.A.Y." class="brand-logo"></div>
+        <div>
+          <div class="brand-name">F.R.I.D.A.Y.</div>
+          <div class="brand-sub">Mobile &amp; PC Control Center</div>
+        </div>
+        <button class="sb-x" id="sbClose" aria-label="Close"><i data-ico="x" data-ico-size="18"></i></button>
+      </div>
+
+      <nav class="nav-list">
+        <button class="nav-item active" data-view="home">
+          <span class="nav-ico"><i data-ico="activity" data-ico-size="16"></i></span>
+          <span class="nav-lbl">Live Dashboard</span>
+          <span class="pill-live">LIVE</span>
+        </button>
+        <button class="nav-item" data-view="builder">
+          <span class="nav-ico"><i data-ico="grid" data-ico-size="16"></i></span>
+          <span class="nav-lbl">Builder Room</span>
+          <span class="nav-count" id="navPageCount">0</span>
+        </button>
+        <button class="nav-item" data-view="control">
+          <span class="nav-ico"><i data-ico="smartphone" data-ico-size="16"></i></span>
+          <span class="nav-lbl">Phone &amp; Apps</span>
+          <span class="nav-count" id="navAppCount">0</span>
+        </button>
+        <button class="nav-item" data-view="setup">
+          <span class="nav-ico"><i data-ico="settings" data-ico-size="16"></i></span>
+          <span class="nav-lbl">Rules &amp; Settings</span>
+        </button>
+      </nav>
+
+      <div class="sb-flex"></div>
+
+      <div class="phone-card-mini">
+        <div class="pcm-head">
+          <span class="status-dot" id="srvDot"></span>
+          <strong id="sbDevName">Connecting...</strong>
+        </div>
+        <div class="pcm-url" id="sbDevUrl">Not connected</div>
+        <div class="pcm-stats">
+          <div><span>Battery</span><b id="sbBat">--</b></div>
+          <div><span>Temp</span><b id="sbTemp">--</b></div>
+          <div><span>Signal</span><b id="sbWifi">--</b></div>
+          <div><span>Uptime</span><b id="sbUp">--</b></div>
+          <div style="grid-column:span 2"><span>SSH :8022</span><b id="sbSsh">--</b></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+      <header class="header">
+        <div class="h-left">
+          <button class="burger" id="menuBtn" aria-label="Menu"><i data-ico="menu" data-ico-size="18"></i></button>
+          <div>
+            <h2 id="viewTitle">Live Dashboard</h2>
+            <p id="viewSub">Real-time phone server overview &amp; instant controls</p>
+          </div>
+        </div>
+        <div class="h-right">
+          <div class="sse-pill"><i class="status-dot" id="sseDot"></i><span id="sseLabel">Connecting</span></div>
+          <span class="save-badge" id="unsavedBadge" hidden>Unsaved Changes</span>
+          <button class="btn primary" id="btnSaveLayout" hidden>Apply to Phone</button>
+        </div>
+      </header>
+
+      <main class="stage">
+        <!-- 1. LIVE DASHBOARD -->
+        <section id="view-home" class="view active">
+          <!-- Hero Gauge Cards -->
+          <div class="rings-grid" id="heroRings"></div>
+
+          <div class="home-split">
+            <!-- Real-time Area Chart -->
+            <div class="card">
+              <div class="card-top">
+                <div>
+                  <h3>Live Performance Stream</h3>
+                  <small class="muted">Real-time CPU, Memory &amp; Battery telemetry from your phone</small>
+                </div>
+                <div class="chart-legend">
+                  <span><i style="background:#2dd4bf"></i>CPU</span>
+                  <span><i style="background:#38bdf8"></i>RAM</span>
+                  <span><i style="background:#a78bfa"></i>Battery</span>
+                </div>
+              </div>
+              <div id="liveChart" class="area-chart"></div>
+            </div>
+
+            <!-- Instant Controls -->
+            <div class="card">
+              <div class="card-top">
+                <div>
+                  <h3>Quick Phone Controls</h3>
+                  <small class="muted" id="homeFgApp">Active app: --</small>
+                </div>
+              </div>
+              <div class="tile-actions">
+                <button class="action-tile" id="qTorch"><span class="at-ico"><i data-ico="flashlight" data-ico-size="18"></i></span><b>Flashlight</b><small id="qTorchLbl">Off</small></button>
+                <button class="action-tile" id="qMute"><span class="at-ico" id="qMuteIco"><i data-ico="volume-2" data-ico-size="18"></i></span><b>Sound</b><small id="qMuteLbl">On</small></button>
+                <button class="action-tile" id="qPlay"><span class="at-ico"><i data-ico="play-pause" data-ico-size="18"></i></span><b>Media</b><small id="qPlayLbl">Play/Pause</small></button>
+                <button class="action-tile" id="qBeep"><span class="at-ico"><i data-ico="bell" data-ico-size="18"></i></span><b>Find Phone</b><small>Ring &amp; Buzz</small></button>
+              </div>
+              <div class="vol-slider-wrap">
+                <div class="row-between"><small class="muted">Media Volume</small><b id="qVolText">--%</b></div>
+                <input type="range" id="qVolRange" min="0" max="100" value="50">
+              </div>
+              <div class="sensor-strip" id="homeSensors"></div>
+            </div>
+          </div>
+
+          <div class="home-bottom">
+            <div class="card">
+              <div class="card-top">
+                <div><h3>Mobile Screens</h3><small class="muted">Pages currently active on your phone</small></div>
+                <button class="btn sm primary" id="goBuilderBtn">Customize Widgets <i data-ico="arrow-right" data-ico-size="13"></i></button>
+              </div>
+              <div id="homePagesList" class="clean-list"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-top">
+                <div><h3>Network Monitors</h3><small class="muted">Live ping status from your phone</small></div>
+                <button class="btn sm" id="homePingBtn">Ping Now</button>
+              </div>
+              <div id="homeMonitorsList" class="clean-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. BUILDER ROOM -->
+        <section id="view-builder" class="view">
+          <div class="card builder-top">
+            <div class="page-pills" id="pageTabs"></div>
+            <div class="row-gap">
+              <button class="btn sm" id="btnNewPage">+ New Page</button>
+              <button class="btn sm" id="btnRenamePage">Rename</button>
+              <button class="btn sm danger" id="btnDelPage">Delete</button>
+              <button class="btn sm" id="btnGotoPhone">Show on Phone</button>
+              <button class="btn sm" id="btnOrientation">Landscape</button>
+            </div>
+          </div>
+
+          <div class="builder-layout">
+            <!-- Center: Phone Mockup -->
+            <div class="card phone-stage-card">
+              <div class="card-top">
+                <div>
+                  <h3>Phone Screen Layout</h3>
+                  <small class="muted">Click any widget to move or resize it, or drag widgets here</small>
+                </div>
+                <div class="row-gap">
+                  <select id="presetSelect" class="inp sm-sel">
+                    <option value="">Quick Presets...</option>
+                    <option value="desk">Mobile Home</option>
+                    <option value="server">Ops &amp; Automation</option>
+                    <option value="apps">Apps &amp; Toolbox</option>
+                    <option value="music">Music Studio (3D)</option>
+                  </select>
+                  <button class="btn sm" id="btnApplyPreset">Load</button>
+                </div>
+              </div>
+
+              <div class="phone-wrap">
+                <div class="phone-frame" id="phoneBezel">
+                  <div class="frame-notch"></div>
+                  <div class="frame-screen" id="phoneScreen">
+                    <div class="mock-head">
+                      <span><i class="status-dot on"></i> <b id="mockPageTitle">Home</b></span>
+                      <span class="mock-addr" id="mockIp">--</span>
+                    </div>
+                    <div class="mock-grid" id="gridCanvas"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Simple Selected Widget Controls -->
+              <div class="tile-bar" id="inspector">
+                <span class="muted">Click any widget on the phone screen above to rename, resize, or move it.</span>
+              </div>
+            </div>
+
+            <!-- Right: Clean Switchboard (Widgets | Look & Style) -->
+            <div class="card switchboard-card">
+              <div class="seg-tabs">
+                <button class="seg active" data-sb="widgets">Choose Widgets</button>
+                <button class="seg" data-sb="style">Look &amp; Theme</button>
+              </div>
+
+              <div id="sb-widgets" class="sb-pane active">
+                <div class="row-gap" style="margin-bottom:8px">
+                  <button type="button" class="btn sm primary" data-cat-dev="all">All</button>
+                  <button type="button" class="btn sm" data-cat-dev="mobile">Mobile</button>
+                  <button type="button" class="btn sm" data-cat-dev="laptop">Laptop</button>
+                </div>
+                <input id="widgetSearch" class="inp" placeholder="Search widgets (clock, music, 3d, trackpad...)" style="margin-bottom:10px">
+                <div id="catalogList" class="widget-picker-list"></div>
+              </div>
+
+              <div id="sb-style" class="sb-pane">
+                <div class="style-section">
+                  <label class="muted">Theme Style</label>
+                  <div class="theme-cards" id="themeSwatches">
+                    <button class="th-card" data-th="glass">Midnight Glass</button>
+                    <button class="th-card" data-th="amoled">AMOLED Black</button>
+                    <button class="th-card" data-th="slate">Warm Slate</button>
+                    <button class="th-card" data-th="cyber">Cyber Glow</button>
+                    <button class="th-card" data-th="paper">Minimal Light</button>
+                  </div>
+                </div>
+                <div class="style-section">
+                  <label class="muted">Accent Color</label>
+                  <div class="accent-dots" id="accentDots">
+                    <button class="adot" data-col="#2dd4bf" style="background:#2dd4bf"></button>
+                    <button class="adot" data-col="#38bdf8" style="background:#38bdf8"></button>
+                    <button class="adot" data-col="#a78bfa" style="background:#a78bfa"></button>
+                    <button class="adot" data-col="#f472b6" style="background:#f472b6"></button>
+                    <button class="adot" data-col="#f59e0b" style="background:#f59e0b"></button>
+                    <input id="thAccent" type="color" value="#2dd4bf" class="color-pick" title="Custom color">
+                  </div>
+                </div>
+                <div class="style-section">
+                  <div class="row-between"><label class="muted">Card Roundness</label><b id="thRadVal">16px</b></div>
+                  <input id="thRadius" type="range" min="6" max="26" value="16">
+                </div>
+                <div class="style-section">
+                  <div class="row-between"><label class="muted">Spacing</label><b id="thGapVal">8px</b></div>
+                  <input id="thGap" type="range" min="4" max="16" value="8">
+                </div>
+                <button class="btn primary full" id="btnSaveTheme">Save Look to Phone</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. PHONE & APPS CONTROL -->
+        <section id="view-control" class="view">
+          <div class="setup-banner" id="permBanner"></div>
+
+          <div class="control-grid">
+            <div class="card">
+              <div class="card-top">
+                <div><h3>Phone Apps</h3><small class="muted">Click to launch on phone or pin to your phone's App Dock</small></div>
+                <button class="btn sm" id="btnRefreshApps"><i data-ico="refresh" data-ico-size="13"></i> Refresh</button>
+              </div>
+              <div class="row-gap" style="margin-bottom:10px">
+                <input id="appSearch" class="inp" placeholder="Search apps...">
+                <input id="deepLinkUri" class="inp" placeholder="Open a website link on phone (https://...)">
+                <button class="btn sm primary" id="btnOpenUri">Open Link</button>
+              </div>
+              <div id="appsGrid" class="apps-grid"></div>
+            </div>
+
+            <div class="stack">
+              <div class="card">
+                <div class="card-top">
+                  <div><h3>Phone Navigation &amp; Input</h3><small class="muted">Control the phone screen remotely from your laptop</small></div>
+                </div>
+                <div class="nav-pad">
+                  <button class="btn" data-g="back"><i data-ico="chevron-left" data-ico-size="14"></i> Back</button>
+                  <button class="btn primary" data-g="home"><i data-ico="home" data-ico-size="14"></i> Home</button>
+                  <button class="btn" data-g="recents"><i data-ico="layers" data-ico-size="14"></i> Recents</button>
+                  <button class="btn" data-g="notifications"><i data-ico="chevron-down" data-ico-size="14"></i> Notifs</button>
+                  <button class="btn" data-g="quick_settings"><i data-ico="settings" data-ico-size="14"></i> Quick</button>
+                  <button class="btn" data-g="screenshot"><i data-ico="camera" data-ico-size="14"></i> Shot</button>
+                  <button class="btn danger" data-g="lock"><i data-ico="lock" data-ico-size="14"></i> Lock</button>
+                </div>
+                <div class="stack" style="margin-top:12px">
+                  <div class="row-gap">
+                    <input id="rmClipText" class="inp" placeholder="Send text to Phone Clipboard...">
+                    <button class="btn sm primary" id="btnPushClip">Send</button>
+                  </div>
+                  <div class="row-gap">
+                    <input id="rmTtsText" class="inp" placeholder="Make phone speak a message...">
+                    <button class="btn sm" id="btnSpeakTts">Speak</button>
+                  </div>
+                  <div class="row-gap">
+                    <input id="a11yTypeText" class="inp" placeholder="Type into open app on phone...">
+                    <button class="btn sm" id="btnTypeText">Type</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-top">
+                  <div><h3>One-Click App Shortcuts</h3><small class="muted">Launch an app automatically via saved macro</small></div>
+                </div>
+                <div class="row-gap" style="margin-bottom:10px">
+                  <input id="macName" class="inp" placeholder="Shortcut name">
+                  <select id="macAppPick" class="inp"><option value="">Pick an app...</option></select>
+                  <button class="btn sm primary" id="btnAddMacro">+ Add</button>
+                </div>
+                <div id="macrosList" class="clean-list"></div>
+              </div>
+
+              <div class="card">
+                <div class="card-top">
+                  <div><h3>Phone Notifications</h3><small class="muted">Reply or dismiss notifications from your laptop</small></div>
+                  <button class="btn sm" id="btnInspectNodes">Tap Screen Button</button>
+                </div>
+                <div id="nodesBox" class="nodes-wrap" hidden></div>
+                <div id="phoneNotifList" class="clean-list"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. RULES & SETTINGS -->
+        <section id="view-setup" class="view">
+          <div class="setup-tabs">
+            <button class="seg active" data-st="rules">Automation Rules</button>
+            <button class="seg" data-st="network">Monitors, WoL &amp; News</button>
+            <button class="seg" data-st="prefs">Weather, Time &amp; Security</button>
+            <button class="seg" data-st="diag">Server, SSH &amp; Diagnostics</button>
+          </div>
+
+          <div id="st-rules" class="st-pane active">
+            <div class="two-col">
+              <div class="card">
+                <div class="card-top"><div><h3>New Automation Rule</h3><small class="muted">Trigger actions automatically on your phone</small></div></div>
+                <div class="stack">
+                  <input id="ruleName" class="inp" placeholder="Rule Name (e.g. Low Battery Alert)">
+                  <div class="row-gap">
+                    <span class="muted">When</span>
+                    <select id="ruleTrigType" class="inp">
+                      <option value="battery_below">Battery drops below (%)</option>
+                      <option value="battery_above">Battery goes above (%)</option>
+                      <option value="light_below">Room light is below (lux)</option>
+                      <option value="monitor_down">A monitor goes offline</option>
+                      <option value="time_window">Time is between (HH:MM-HH:MM)</option>
+                      <option value="webhook_eq">Webhook matches (key=value)</option>
+                    </select>
+                    <input id="ruleTrigVal" class="inp" placeholder="Value (e.g. 20)">
+                  </div>
+                  <div class="row-gap">
+                    <span class="muted">Then</span>
+                    <select id="ruleActType" class="inp">
+                      <option value="notify">Show Notification on Phone</option>
+                      <option value="goto_page">Switch Phone Page (ID)</option>
+                      <option value="torch_on">Turn Flashlight ON</option>
+                      <option value="torch_off">Turn Flashlight OFF</option>
+                      <option value="beep">Play Alert Sound</option>
+                      <option value="speak_tts">Speak Aloud (TTS)</option>
+                      <option value="launch_app">Open App (Package)</option>
+                      <option value="run_macro">Run Shortcut ID</option>
+                    </select>
+                    <input id="ruleActVal" class="inp" placeholder="Message / Page / App">
+                  </div>
+                  <button class="btn primary" id="btnAddRule">Create Rule</button>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-top"><div><h3>Active Rules</h3><small class="muted">Toggle or test saved automation rules</small></div></div>
+                <div id="rulesList" class="clean-list"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="st-network" class="st-pane">
+            <div class="three-col">
+              <div class="card">
+                <div class="card-top"><div><h3>Uptime Monitors</h3><small class="muted">Devices checked by phone</small></div><button class="btn sm" id="btnRunMonitors">Ping</button></div>
+                <div class="row-gap" style="margin-bottom:10px">
+                  <input id="monName" class="inp" placeholder="Label">
+                  <input id="monHost" class="inp" placeholder="IP or Host">
+                  <input id="monPort" class="inp" type="number" value="0" style="width:76px" title="0 for ping, or TCP port">
+                  <button class="btn sm primary" id="btnAddMonitor">Add</button>
+                </div>
+                <div id="monList" class="clean-list"></div>
+              </div>
+
+              <div class="card">
+                <div class="card-top"><div><h3>Wake-on-LAN PCs</h3><small class="muted">Boot computers from phone</small></div></div>
+                <div class="row-gap" style="margin-bottom:10px">
+                  <input id="wolName" class="inp" placeholder="PC Name">
+                  <input id="wolMac" class="inp" placeholder="MAC (AA:BB:CC:DD:EE:FF)">
+                  <button class="btn sm primary" id="btnAddWol">Add</button>
+                </div>
+                <div id="wolList" class="clean-list"></div>
+              </div>
+
+              <div class="card">
+                <div class="card-top"><div><h3>News Feeds (RSS)</h3><small class="muted">Shown in News widget</small></div><button class="btn sm" id="btnRefreshNews"><i data-ico="refresh" data-ico-size="13"></i> Sync</button></div>
+                <div class="row-gap" style="margin-bottom:10px">
+                  <input id="feedName" class="inp" placeholder="Feed Name">
+                  <input id="feedUrl" class="inp" placeholder="RSS/Atom URL">
+                  <button class="btn sm primary" id="btnAddFeed">Add</button>
+                </div>
+                <div id="feedsList" class="clean-list"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="st-prefs" class="st-pane">
+            <div class="two-col">
+              <div class="card">
+                <div class="card-top"><div><h3>Weather &amp; World Clocks</h3><small class="muted">Configure real location &amp; timezones</small></div></div>
+                <div class="stack">
+                  <div class="row-gap">
+                    <input id="setCity" class="inp" placeholder="Enter your city (e.g. Chennai)">
+                    <button class="btn primary" id="btnFindCity" type="button">Find City</button>
+                  </div>
+                  <div class="row-gap">
+                    <input id="setLat" class="inp" placeholder="Latitude">
+                    <input id="setLon" class="inp" placeholder="Longitude">
+                  </div>
+                  <div class="row-gap">
+                    <input id="setWorldClocks" class="inp" placeholder="Asia/Kolkata|IST,UTC|UTC,America/New_York|NYC">
+                    <button class="btn sm" id="btnFillZones" type="button">Use Preset</button>
+                  </div>
+                  <button class="btn primary" id="btnSaveSettings1">Save Location &amp; Clocks</button>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-top"><div><h3>Pairing Gate, Anywhere &amp; Security</h3><small class="muted">6-digit confirmation gate, Remote/Tailscale URL &amp; Relay tunnel</small></div></div>
+                <div class="stack">
+                  <label class="chk-line"><input type="checkbox" id="setKeepOn"> Keep phone screen awake while dashboard is open</label>
+                  <label class="chk-line"><input type="checkbox" id="setOledShift"> Subtle pixel shift (OLED burn-in protection)</label>
+                  <label class="chk-line"><input type="checkbox" id="setReqPairing"> Require 6-digit pairing permission for new laptops/browsers</label>
+                  <label class="chk-line"><input type="checkbox" id="setPinEnabled"> Also allow Admin PIN unlock</label>
+                  <div class="row-gap"><span class="muted" style="min-width:95px">Admin PIN</span><input id="setPin" class="inp" placeholder="1234"></div>
+                  <div class="row-gap"><span class="muted" style="min-width:95px">Remote URL</span><input id="setRemoteUrl" class="inp" placeholder="https://my-phone.ts.net (optional)"></div>
+                  <label class="chk-line"><input type="checkbox" id="setRelayEnabled"> Connect out to Self-Host Relay (Access anywhere over 4G/5G)</label>
+                  <div class="row-gap"><span class="muted" style="min-width:95px">Relay URL</span><input id="setRelayUrl" class="inp" placeholder="https://relay.example.com"></div>
+                  <div class="row-gap"><span class="muted" style="min-width:95px">Relay Room</span><input id="setRelayRoom" class="inp" readonly></div>
+                  <button class="btn primary" id="btnSaveSettings2">Save Security, Relay &amp; Display</button>
+                </div>
+              </div>
+
+              <div class="card" style="grid-column:span 2">
+                <div class="card-top"><div><h3>Paired Laptops &amp; Browsers</h3><small class="muted">Devices authorized via 6-digit code confirmation</small></div></div>
+                <div id="pairedDevicesList" class="clean-list"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="st-diag" class="st-pane">
+            <div class="card" style="margin-bottom:14px">
+              <div class="card-top">
+                <div><h3><i data-ico="terminal" data-ico-size="15"></i> Phone Server &amp; Termux SSH</h3><small class="muted">Live always-on locks, network auto-start &amp; SSH server status</small></div>
+                <div class="row-gap">
+                  <button class="btn sm" id="btnBatterySettings"><i data-ico="settings" data-ico-size="13"></i> Battery</button>
+                  <button class="btn sm" id="btnCopySsh"><i data-ico="copy" data-ico-size="13"></i> Copy SSH</button>
+                  <button class="btn sm" id="btnEnsureSsh"><i data-ico="refresh" data-ico-size="13"></i> Start SSH</button>
+                  <button class="btn sm primary" id="btnOpenTermux"><i data-ico="terminal" data-ico-size="13"></i> Open Termux</button>
+                </div>
+              </div>
+              <label class="chk-line" style="margin-bottom:10px"><input type="checkbox" id="setAutoKeepSsh"> Auto-start Termux SSH when network connects or F.R.I.D.A.Y. runs</label>
+              <div id="sshHealthList" class="clean-list" style="margin-bottom:10px"></div>
+              <pre id="sshCmdHelp" class="code-box"></pre>
+            </div>
+            <div class="card" style="margin-bottom:14px">
+              <div class="card-top">
+                <div><h3><i data-ico="cpu" data-ico-size="15"></i> Antigravity Bridge &amp; Phone Approvals</h3><small class="muted">Live laptop tokens, quota &amp; remote tool approval gate</small></div>
+                <div class="row-gap">
+                  <button class="btn sm" id="btnClearAgyPerms">Clear History</button>
+                </div>
+              </div>
+              <label class="chk-line" style="margin-bottom:10px"><input type="checkbox" id="setAgyGate"> Ask permission on Phone screen before laptop Antigravity runs sensitive tools (Phone Gate)</label>
+              <div class="two-col">
+                <div id="agyStatsList" class="clean-list"></div>
+                <div id="agyPermsList" class="clean-list"></div>
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="card">
+                <div class="card-top"><div><h3>SQLite Database Tables</h3><small class="muted">phonebox_server.db (WAL mode)</small></div></div>
+                <div id="dbTables" class="clean-list"></div>
+              </div>
+              <div class="card">
+                <div class="card-top"><div><h3>Live Logs &amp; Webhook API</h3></div></div>
+                <div id="logBox" class="code-box" style="margin-bottom:10px"></div>
+                <pre id="curlHelp" class="code-box"></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="toastBox" class="toast" hidden></div>
+
+  <div id="pinModal" class="overlay" hidden>
+    <div class="card pin-box">
+      <h3>Device Authorization Required</h3>
+      <p class="muted" id="authPromptSub">Request permission &amp; confirm with the 6-digit code shown on your F.R.I.D.A.Y. phone, or enter Admin PIN.</p>
+      <div class="stack" style="gap:8px;margin-top:8px">
+        <button class="btn primary" id="pairReqBtn">Request 6-Digit Pairing Code on Phone</button>
+        <input id="pinInput" class="inp" type="password" placeholder="6-digit Code or Admin PIN">
+        <button class="btn primary" id="pinSubmit">Confirm &amp; Unlock</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

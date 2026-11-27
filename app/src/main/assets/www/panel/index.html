@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>F.R.I.D.A.Y. Control</title>
+  <link rel="icon" type="image/png" href="/shared/friday-logo.png">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div id="shell">
+    <header id="topbar">
+      <div class="tb-left">
+        <img src="/shared/friday-logo.png" alt="F.R.I.D.A.Y." class="tb-logo">
+        <span class="dot" id="connDot"></span>
+        <span id="pageTitle">Mobile Home</span>
+        <span id="pageGroupBadge" class="tb-grp mobile">MOBILE</span>
+      </div>
+      <div class="tb-right">
+        <button type="button" id="pairBadge" class="chip" title="Paired Devices &amp; 6-Digit Security">Pair PC</button>
+        <span id="ipBadge" class="chip">127.0.0.1:8765</span>
+        <button id="btnNight" class="icon-btn" title="Night Dim"><i data-ico="moon" data-ico-size="16"></i></button>
+        <button id="btnOverview" class="icon-btn" title="All Pages"><i data-ico="grid" data-ico-size="16"></i></button>
+      </div>
+    </header>
+
+    <main id="pager"></main>
+
+    <footer id="dots"></footer>
+  </div>
+
+  <div id="overview" class="overlay" hidden>
+    <div class="ov-box ov-box-wide">
+      <div class="ov-head">
+        <strong>All Pages · Mobile &amp; Laptop</strong>
+        <button id="ovClose" class="icon-btn"><i data-ico="x" data-ico-size="16"></i></button>
+      </div>
+      <div id="ovPairSummary" class="ov-pair-bar"></div>
+      <div class="ov-sections">
+        <div class="ov-group">
+          <div class="ov-group-head"><i data-ico="smartphone" data-ico-size="12"></i> MOBILE SERVER PAGES</div>
+          <div id="ovMobList" class="ov-grid"></div>
+        </div>
+        <div class="ov-group">
+          <div class="ov-group-head"><i data-ico="monitor" data-ico-size="12"></i> LAPTOP &amp; PC PAGES</div>
+          <div id="ovLapList" class="ov-grid"></div>
+        </div>
+      </div>
+      <div class="ov-foot">
+        <span id="ovAdminHint"></span>
+      </div>
+    </div>
+  </div>
+
+  <div id="pairModal" class="overlay" hidden>
+    <div class="ov-box pair-modal-box">
+      <div class="ov-head">
+        <strong class="inline-tag"><i data-ico="shield" data-ico-size="16"></i> Laptop Pairing Request</strong>
+        <button id="pairModalClose" class="icon-btn"><i data-ico="x" data-ico-size="16"></i></button>
+      </div>
+      <div class="pair-req-card">
+        <b id="pairDevName">Laptop</b>
+        <small id="pairDevMeta">Windows · Requesting access</small>
+      </div>
+      <div id="pairCodeBox" class="pair-code-box" hidden>
+        <span class="pair-code-lbl">ENTER THIS 6-DIGIT CODE ON YOUR LAPTOP TO CONFIRM</span>
+        <div id="pairCodeDigits" class="pair-code-digits">000  000</div>
+      </div>
+      <div id="pairActions" class="modal-actions"></div>
+    </div>
+  </div>
+
+  <div id="noteModal" class="overlay" hidden>
+    <div class="ov-box">
+      <div class="ov-head">
+        <strong id="noteModalTitle">Note</strong>
+        <button id="noteCancel" class="icon-btn"><i data-ico="x" data-ico-size="16"></i></button>
+      </div>
+      <input id="noteTitleInput" class="inp" placeholder="Title">
+      <textarea id="noteBodyInput" class="inp" rows="6" placeholder="Write note..."></textarea>
+      <div class="modal-actions">
+        <button id="noteDelete" class="btn danger" hidden>Delete</button>
+        <button id="noteSave" class="btn primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="taskModal" class="overlay" hidden>
+    <div class="ov-box">
+      <div class="ov-head">
+        <strong>New Task</strong>
+        <button id="taskCancel" class="icon-btn"><i data-ico="x" data-ico-size="16"></i></button>
+      </div>
+      <input id="taskTextInput" class="inp" placeholder="Task description...">
+      <div class="modal-actions">
+        <button id="taskSave" class="btn primary">Add Task</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="clipModal" class="overlay" hidden>
+    <div class="ov-box">
+      <div class="ov-head">
+        <strong>Save to Clipboard Vault</strong>
+        <button id="clipCancel" class="icon-btn"><i data-ico="x" data-ico-size="16"></i></button>
+      </div>
+      <textarea id="clipTextInput" class="inp" rows="4" placeholder="Paste or type snippet..."></textarea>
+      <div class="modal-actions">
+        <button id="clipSave" class="btn primary">Save &amp; Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="agyPermModal" class="overlay" hidden>
+    <div class="ov-box agy-perm-modal">
+      <div class="ov-head">
+        <strong class="inline-tag"><i data-ico="shield" data-ico-size="16"></i> AI Tool Permission Request</strong>
+        <button id="agyPermClose" class="icon-btn"><i data-ico="x" data-ico-size="16"></i></button>
+      </div>
+      <div class="agy-perm-meta">
+        <span id="agyPermTool" class="badge info">tool</span>
+        <span id="agyPermKind" class="badge ok" hidden>Choice</span>
+        <span id="agyPermModel" class="sub-muted" style="margin:0"></span>
+      </div>
+      <pre id="agyPermDetail" class="agy-perm-code"></pre>
+      <div id="agyPermInteractive" class="agy-choice-wrap"></div>
+      <div id="agyPermActions" class="modal-actions"></div>
+    </div>
+  </div>
+
+  <div id="agyDiffModal" class="overlay" hidden>
+    <div class="ov-box agy-diff-modal-box">
+      <div class="ov-head">
+        <strong class="inline-tag"><i data-ico="code" data-ico-size="16"></i> <span id="agyDiffFileTitle">Code Preview</span></strong>
+        <button id="agyDiffClose" class="icon-btn"><i data-ico="x" data-ico-size="16"></i></button>
+      </div>
+      <div class="agy-perm-meta">
+        <span id="agyDiffStat" class="badge ok">+0 / -0</span>
+        <span id="agyDiffTool" class="sub-muted" style="margin:0;flex:1 1 auto"></span>
+        <div id="agyDiffModeSwitch" class="agy-mode-mini"></div>
+      </div>
+      <div id="agyDiffBody" class="agy-diff-scroll"></div>
+      <div class="modal-actions">
+        <button id="agyDiffCopyBtn" class="btn"><i data-ico="copy" data-ico-size="13"></i> Copy Path</button>
+        <button id="agyDiffAskBtn" class="btn primary"><i data-ico="send" data-ico-size="13"></i> Ask AI About File</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="detailModal" class="overlay" hidden>
+    <div class="ov-box">
+      <div class="ov-head">
+        <strong id="detailModalTitle">Details</strong>
+        <button id="detailModalClose" class="icon-btn"><i data-ico="x" data-ico-size="16"></i></button>
+      </div>
+      <div id="detailModalBody"></div>
+      <div id="detailModalActions" class="modal-actions"></div>
+    </div>
+  </div>
+
+  <div id="nightCurtain" hidden>
+    <div id="nightClock">00:00</div>
+    <small>Tap anywhere to wake</small>
+  </div>
+
+  <div id="toast" hidden><b id="toastTitle"></b><div id="toastBody"></div></div>
+  <input type="file" id="mobileFilePicker" hidden>
+
+  <script type="module" src="panel.js"></script>
+</body>
+</html>

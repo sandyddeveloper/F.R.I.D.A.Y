@@ -1,0 +1,26 @@
+[versions]
+androidGradlePlugin = "9.0.1"
+androidxCore = "1.18.0"
+androidxActivity = "1.13.0"
+androidxLifecycle = "2.10.0"
+androidxWebkit = "1.12.1"
+coroutines = "1.10.2"
+ktor = "3.1.1"
+zxing = "3.5.3"
+slf4j = "2.0.16"
+junit = "4.13.2"
+
+[libraries]
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
+androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "androidxActivity" }
+androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidxLifecycle" }
+androidx-webkit = { module = "androidx.webkit:webkit", version.ref = "androidxWebkit" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+ktor-server-core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
+ktor-server-cio = { module = "io.ktor:ktor-server-cio-jvm", version.ref = "ktor" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+slf4j-nop = { module = "org.slf4j:slf4j-nop", version.ref = "slf4j" }
+junit = { module = "junit:junit", version.ref = "junit" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
