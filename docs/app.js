@@ -54,3 +54,35 @@ const io = new IntersectionObserver((entries) => {
 }, { rootMargin: '0px 0px -10% 0px' });
 
 document.querySelectorAll('[data-reveal]').forEach((el) => io.observe(el));
+
+async function hydrateGitHubStars() {
+  const buttons = [...document.querySelectorAll('[data-star-btn]')];
+  if (!buttons.length) return;
+  const applyCount = (n) => {
+    if (typeof n !== 'number' || !Number.isFinite(n)) return;
+    buttons.forEach((btn) => {
+      const span = btn.querySelector('.star-count');
+      if (span) {
+        span.textContent = String(n);
+        span.hidden = false;
+      }
+    });
+  };
+  try {
+    const cached = sessionStorage.getItem('friday_stars');
+    if (cached !== null) {
+      applyCount(Number(cached));
+    }
+    const res = await fetch('https://api.github.com/repos/sandyddeveloper/F.R.I.D.A.Y', {
+      headers: { Accept: 'application/vnd.github+json' }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (typeof data.stargazers_count === 'number') {
+      sessionStorage.setItem('friday_stars', String(data.stargazers_count));
+      applyCount(data.stargazers_count);
+    }
+  } catch (_) {}
+}
+
+hydrateGitHubStars();

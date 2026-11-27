@@ -110,6 +110,21 @@ html:not(.js) [role="tabpanel"][hidden] {
   gap: var(--space-lg);
 }
 
+.site-nav__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.star-count {
+  padding-left: var(--space-xs);
+  margin-left: var(--space-2xs);
+  border-left: var(--rule-hair) solid var(--color-rule);
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+}
+
 .nav-links a {
   color: var(--color-muted);
   text-decoration: none;
