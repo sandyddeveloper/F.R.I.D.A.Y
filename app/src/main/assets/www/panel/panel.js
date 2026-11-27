@@ -353,4 +353,79 @@ function connectStream() {
 }
 
 window.addEventListener('resize', () => { lastPagesSig = ''; if (store.state) { buildLayout(); renderWidgets(); } });
+
+// --- Voice Command Engine ---
+let voiceActive = false;
+const btnVoice = document.getElementById('btnVoice');
+if (btnVoice) {
+  btnVoice.onclick = () => {
+    if (!voiceActive) {
+      voiceActive = true;
+      btnVoice.classList.add('voice-on');
+      haptic(25);
+      window.PhoneBoxNative?.startVoiceCommand();
+    } else {
+      voiceActive = false;
+      btnVoice.classList.remove('voice-on');
+      window.PhoneBoxNative?.stopVoiceCommand();
+    }
+  };
+}
+
+window.fridayOnVoiceTranscript = (type, text) => {
+  if (type === 'ready') { showToast('Listening\u2026', 'Speak a command'); return; }
+  if (type === 'error') { voiceActive = false; btnVoice?.classList.remove('voice-on'); showToast('Voice Error', text); return; }
+  if (type === 'partial') { return; } // silently update — no toast for partial
+  if (type === 'result') {
+    voiceActive = false;
+    btnVoice?.classList.remove('voice-on');
+    runFridayVoiceCommand(text.toLowerCase().trim());
+  }
+};
+
+function runFridayVoiceCommand(cmd) {
+  if (!cmd) return;
+  haptic(20);
+  // Strip wake word if spoken aloud
+  cmd = cmd.replace(/^(hey\s+)?f\.?r\.?i\.?d\.?a\.?y\.?\s*/i, '').trim();
+  if (!cmd) { showToast('Voice Ready', 'Say a command after \u201cHey F.R.I.D.A.Y.\u201d'); return; }
+
+  const post = (op, extra) => fetch('/api/laptop/input', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ op, ...extra })
+  });
+
+  // Volume — "set volume 60" / "volume 60"
+  const volMatch = cmd.match(/volume\s+(\d+)/);
+  if (volMatch) { post('set_vol', { pct: Math.min(100, Number(volMatch[1])) }); showToast('Volume', volMatch[1] + '%'); return; }
+
+  // Media controls
+  if (/\b(play|resume)\b/.test(cmd) && !/pause/.test(cmd)) { post('key', { combo: 'media_play' }); showToast('Playing'); return; }
+  if (/\bpause\b/.test(cmd)) { post('key', { combo: 'media_play' }); showToast('Paused'); return; }
+  if (/\b(next|skip)\b/.test(cmd)) { post('key', { combo: 'media_next' }); showToast('Next Track'); return; }
+  if (/\bprev(ious)?\b/.test(cmd)) { post('key', { combo: 'media_prev' }); showToast('Previous Track'); return; }
+  if (/\b(mute|unmute)\b/.test(cmd)) { post('toggle_mute', {}); showToast('Mute Toggled'); return; }
+
+  // Lock PC
+  if (/\block\s*(pc|computer|laptop)?\b/.test(cmd)) { post('system_act', { act: 'lock' }); showToast('Locking PC'); return; }
+
+  // Profile switcher — "coding mode", "night profile", "music"
+  const profMatch = cmd.match(/\b(coding|music|night|meeting|focus|gaming)\s*(mode|profile)?\b/);
+  if (profMatch) { post('profile', { name: profMatch[1] }); showToast('Profile: ' + profMatch[1]); return; }
+
+  // Screen off
+  if (/\b(screen off|turn off screen|sleep)\b/.test(cmd)) { post('system_act', { act: 'screen_off' }); showToast('Screen Off'); return; }
+
+  // Open app — "open notepad" / "open spotify"
+  const openMatch = cmd.match(/^open\s+(.+)$/);
+  if (openMatch) { post('launch_app', { appId: openMatch[1].trim() }); showToast('Opening', openMatch[1].trim()); return; }
+
+  // Type text — "type hello world"
+  const typeMatch = cmd.match(/^type\s+(.+)$/);
+  if (typeMatch) { post('key', { combo: 'type:' + typeMatch[1] }); showToast('Typed', typeMatch[1]); return; }
+
+  // Fallback: show recognized text as toast
+  showToast('Voice: "' + cmd + '"', 'Command not recognized');
+}
+
 connectStream();

@@ -139,6 +139,7 @@ class ServerService : Service() {
         relayClient = null
         server?.stop()
         server = null
+        com.santhu.phonebox.system.CameraStreamController.stop()
         PhoneBoxApp.instance.hw.onHardwareChanged = null
         PhoneBoxApp.instance.hw.stop()
         runCatching {
@@ -354,6 +355,15 @@ class ServerService : Service() {
 
         @Volatile
         var onSettingsUpdated: (() -> Unit)? = null
+
+        @Volatile
+        var onCameraPermissionRequired: (() -> Unit)? = null
+
+        fun enqueueLaptopCommand(obj: JSONObject): Boolean {
+            val srv = activeServer ?: return false
+            srv.enqueueLaptopCommand(obj)
+            return true
+        }
 
         @Volatile
         private var lastSshEnsureAt: Long = 0L

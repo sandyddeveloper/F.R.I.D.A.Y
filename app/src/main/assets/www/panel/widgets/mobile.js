@@ -435,7 +435,14 @@ export async function renderMobileWidget(type, card, body, tag, wCfg) {
     if (!files.length) body.innerHTML = emptyMsg('Tap + Add to store a file');
     else {
       body.className = 'card-body list-scroll';
-      body.innerHTML = files.slice(0, 8).map(f => `<div class="row-item"><a href="/api/files/${f.id}" style="color:var(--text);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.filename)} <small style="color:var(--muted)">(${fmtBytes(f.sizeBytes)})</small></a><button class="btn sm danger" data-del-file="${f.id}">${ico('x', 12)}</button></div>`).join('');
+      body.innerHTML = files.slice(0, 8).map(f => `<div class="row-item"><a href="/api/files/${f.id}" style="color:var(--text);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.filename)} <small style="color:var(--muted)">(${fmtBytes(f.sizeBytes)})</small></a><button class="btn sm" title="Send directly to PC Downloads/F.R.I.D.A.Y." data-send-pc="${f.id}">${ico('send', 11)} PC</button><button class="btn sm danger" data-del-file="${f.id}">${ico('x', 12)}</button></div>`).join('');
+      body.querySelectorAll('[data-send-pc]').forEach(b => {
+        b.onclick = async () => {
+          haptic(18);
+          const res = await fetch('/api/files/' + b.dataset.sendPc + '/send-pc', { method: 'POST', body: '{}' }).then(r => r.json()).catch(() => ({ ok: false }));
+          showToast(res.ok ? 'Sent to PC Drop' : 'Send Failed', res.ok ? `Downloading "${res.filename || 'file'}" on laptop...` : 'Could not queue PC transfer');
+        };
+      });
       body.querySelectorAll('[data-del-file]').forEach(b => { b.onclick = () => fetch('/api/files/' + b.dataset.delFile, { method: 'DELETE' }); });
     }
   }

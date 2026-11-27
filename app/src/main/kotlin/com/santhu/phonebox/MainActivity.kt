@@ -11,6 +11,9 @@ import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.view.KeyEvent
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
@@ -31,23 +34,45 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import com.santhu.phonebox.server.ServerService
+import com.santhu.phonebox.system.AppLog
 import com.santhu.phonebox.system.DeviceTelemetry
+import com.santhu.phonebox.system.ShareReceiverHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
     private var serverPort: Int = 8765
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+    private var speechRecognizer: SpeechRecognizer? = null
+    private var pendingVoiceAfterPerm = false
+    private var pendingCameraAfterPerm = false
 
     private val requestPerms = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { }
+    ) { grants ->
+        if (pendingVoiceAfterPerm) {
+            pendingVoiceAfterPerm = false
+            val granted = grants[Manifest.permission.RECORD_AUDIO] == true ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+            if (granted) startSpeechListening() else evalVoiceJs("error", "Microphone permission denied")
+        }
+        if (pendingCameraAfterPerm) {
+            pendingCameraAfterPerm = false
+            val granted = grants[Manifest.permission.CAMERA] == true ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+            webView.evaluateJavascript("window.fridayOnCameraPerm && window.fridayOnCameraPerm($granted);", null)
+        }
+    }
 
     private val pickFileLauncher = registerForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
@@ -64,6 +89,14 @@ class MainActivity : ComponentActivity() {
         ServerService.start(this)
         ServerService.onSettingsUpdated = {
             runOnUiThread { applyScreenSettings() }
+        }
+        ServerService.onCameraPermissionRequired = {
+            runOnUiThread { requestCameraPermission() }
+        }
+        if (savedInstanceState == null) {
+            ShareReceiverHelper.handle(this, intent, lifecycleScope) { msg ->
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            }
         }
 
         val needed = mutableListOf<String>()
@@ -150,6 +183,14 @@ class MainActivity : ComponentActivity() {
         loadPanelWhenReady()
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        ShareReceiverHelper.handle(this, intent, lifecycleScope) { msg ->
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         enableImmersiveFullscreen()
@@ -158,6 +199,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         ServerService.onSettingsUpdated = null
+        ServerService.onCameraPermissionRequired = null
+        runCatching { speechRecognizer?.destroy() }
+        speechRecognizer = null
         webView.destroy()
         super.onDestroy()
     }
@@ -190,6 +234,56 @@ class MainActivity : ComponentActivity() {
         val controller = WindowInsetsControllerCompat(window, window.decorView)
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         controller.hide(WindowInsetsCompat.Type.systemBars())
+    }
+
+    private fun evalVoiceJs(type: String, text: String) {
+        runOnUiThread {
+            webView.evaluateJavascript(
+                "window.fridayOnVoiceTranscript && window.fridayOnVoiceTranscript(${org.json.JSONObject.quote(type)}, ${org.json.JSONObject.quote(text)});", null)
+        }
+    }
+
+    private fun requestCameraPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            webView.evaluateJavascript("window.fridayOnCameraPerm && window.fridayOnCameraPerm(true);", null)
+        } else {
+            pendingCameraAfterPerm = true
+            requestPerms.launch(arrayOf(Manifest.permission.CAMERA))
+        }
+    }
+
+    private fun startSpeechListening() {
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            evalVoiceJs("error", "Speech recognition not available on this device")
+            return
+        }
+        runCatching { speechRecognizer?.destroy() }
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
+        speechRecognizer?.setRecognitionListener(object : RecognitionListener {
+            override fun onResults(results: android.os.Bundle?) {
+                val matches = results?.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION)
+                val text = matches?.firstOrNull() ?: ""
+                if (text.isNotBlank()) evalVoiceJs("result", text)
+            }
+            override fun onError(error: Int) { evalVoiceJs("error", "Speech error $error") }
+            override fun onReadyForSpeech(params: android.os.Bundle?) { evalVoiceJs("ready", "") }
+            override fun onBeginningOfSpeech() {}
+            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onBufferReceived(buffer: ByteArray?) {}
+            override fun onEndOfSpeech() {}
+            override fun onPartialResults(partial: android.os.Bundle?) {
+                val text = partial?.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull() ?: ""
+                if (text.isNotBlank()) evalVoiceJs("partial", text)
+            }
+            override fun onEvent(eventType: Int, params: android.os.Bundle?) {}
+        })
+        val intent = android.content.Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+        }
+        speechRecognizer?.startListening(intent)
     }
 
     private fun loadPanelWhenReady() {
@@ -242,6 +336,27 @@ class MainActivity : ComponentActivity() {
         @JavascriptInterface
         fun toast(message: String) {
             runOnUiThread { Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show() }
+        }
+
+        @JavascriptInterface
+        fun startVoiceCommand() {
+            val hasPerm = ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+            if (!hasPerm) {
+                pendingVoiceAfterPerm = true
+                requestPerms.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
+            } else {
+                runOnUiThread { startSpeechListening() }
+            }
+        }
+
+        @JavascriptInterface
+        fun stopVoiceCommand() {
+            runCatching { speechRecognizer?.stopListening() }
+        }
+
+        @JavascriptInterface
+        fun requestCameraPermission() {
+            this@MainActivity.requestCameraPermission()
         }
     }
 }

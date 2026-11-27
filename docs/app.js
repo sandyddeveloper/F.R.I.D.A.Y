@@ -85,4 +85,21 @@ async function hydrateGitHubStars() {
   } catch (_) {}
 }
 
+async function hydrateLatestApkLink() {
+  const apkLinks = [...document.querySelectorAll('[data-apk-link]')];
+  if (!apkLinks.length) return;
+  try {
+    const res = await fetch('https://api.github.com/repos/sandyddeveloper/F.R.I.D.A.Y/releases/latest', {
+      headers: { Accept: 'application/vnd.github+json' }
+    });
+    if (!res.ok) return;
+    const rel = await res.json();
+    const apk = Array.isArray(rel.assets) ? rel.assets.find((a) => String(a.name || '').endsWith('.apk')) : null;
+    if (apk && apk.browser_download_url) {
+      apkLinks.forEach((a) => { a.href = apk.browser_download_url; });
+    }
+  } catch (_) {}
+}
+
 hydrateGitHubStars();
+hydrateLatestApkLink();
