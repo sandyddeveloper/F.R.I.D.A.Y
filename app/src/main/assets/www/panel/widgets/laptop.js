@@ -302,11 +302,16 @@ export function renderPcScreenWidget(body) {
         <button type="button" class="pcr-toggle ${pcScreenLive ? 'on' : ''}" data-scr-live="1">${pcScreenLive ? 'Live ON' : 'Live'}</button>
         <button type="button" class="btn sm" data-scr-snap="1">${ico('refresh', 11)} Peek</button>
         <button type="button" class="btn sm" data-scr-zoom="1">${ico('maximize-2', 11)}</button>
+        <button type="button" class="btn sm" data-cam-toggle="1">${ico('video', 11)} Cam</button>
       </div>
     </div>
     <div class="pcs-stage">
       ${ts > 0 ? `<img data-pc-screen-img="1" src="/api/laptop/screen?t=${ts}" alt="Laptop screen"><span class="pcs-overlay-tip">Tap screen to click PC</span>`
         : `<div class="hw-empty" style="border:0">Tap Peek or Live to view laptop screen</div>`}
+    </div>
+    <div id="camStage" class="pcs-stage" style="display:none;padding:0">
+      <img id="camFeed" src="" alt="Phone Camera" style="width:100%;border-radius:10px;display:block">
+      <div style="font-size:10px;color:var(--muted);padding:4px 6px;text-align:right" id="camObsUrl"></div>
     </div>
   </div>`;
 
@@ -326,6 +331,37 @@ export function renderPcScreenWidget(body) {
     });
   };
   bindScreenHandlers(body);
+
+  // Camera toggle
+  let camRunning = false;
+  body.querySelector('[data-cam-toggle]').onclick = async () => {
+    haptic(15);
+    if (!camRunning) {
+      camRunning = true;
+      const btn = body.querySelector('[data-cam-toggle]');
+      btn.classList.add('on');
+      const facing = 'back';
+      await fetch(`/api/camera/start?facing=${facing}`, { method: 'POST' }).catch(() => {});
+      const stage = body.querySelector('#camStage');
+      const feed = body.querySelector('#camFeed');
+      const obsDiv = body.querySelector('#camObsUrl');
+      if (stage && feed) {
+        feed.src = `/api/camera.mjpeg?t=${Date.now()}`;
+        stage.style.display = 'block';
+        const origin = (store.state?.telemetry?.url || location.origin).replace(/\/r\/?$/, '');
+        if (obsDiv) obsDiv.textContent = `OBS: ${origin}/api/camera.mjpeg`;
+      }
+    } else {
+      camRunning = false;
+      const btn = body.querySelector('[data-cam-toggle]');
+      btn?.classList.remove('on');
+      await fetch('/api/camera/stop', { method: 'POST' }).catch(() => {});
+      const stage = body.querySelector('#camStage');
+      const feed = body.querySelector('#camFeed');
+      if (stage) stage.style.display = 'none';
+      if (feed) feed.src = '';
+    }
+  };
 }
 
 function getDefaultDeckFolders() {
@@ -510,12 +546,16 @@ export function renderPcDisplayWidget(body) {
   const hasBright = typeof ctrl.bright === 'number' && ctrl.bright >= 0;
   const bright = hasBright ? ctrl.bright : 0;
   const clipAuto = store.state?.settings?.clip_auto_sync !== '0';
+  const proxLock = store.state?.settings?.presence_auto_lock === '1';
   if (body.querySelector('[data-pc-br]') && Date.now() < store.brightDragLockUntil) return;
 
   body.innerHTML = `<div class="pcd-wrap">
-    <div style="display:flex;justify-content:space-between;align-items:center">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:4px;flex-wrap:wrap">
       <span class="wx-title">DISPLAY BRIGHTNESS</span>
-      <button type="button" class="pcr-toggle ${clipAuto ? 'on' : ''}" data-clip-sync="1">${ico('clipboard', 10)} ${clipAuto ? 'Clip Sync ON' : 'Clip Sync Off'}</button>
+      <div class="pcr-pills">
+        <button type="button" class="pcr-toggle ${proxLock ? 'on' : ''}" data-prox-lock="1" title="Auto-Lock PC when phone leaves desk LAN/BT">${ico('lock', 10)} ${proxLock ? 'Auto-Lock' : 'Walk-Away'}</button>
+        <button type="button" class="pcr-toggle ${clipAuto ? 'on' : ''}" data-clip-sync="1">${ico('clipboard', 10)} ${clipAuto ? 'Clip ON' : 'Clip Off'}</button>
+      </div>
     </div>
     <div class="pcd-bright-box">
       <span class="pcd-bright-num" data-pc-br-lbl="1">${hasBright ? bright : '--'}</span>
@@ -539,6 +579,12 @@ export function renderPcDisplayWidget(body) {
   br.onchange = (e) => { store.brightDragLockUntil = Date.now() + 1200; sendPcInput({ op: 'set_bright', pct: Number(e.target.value) }); };
   body.querySelectorAll('[data-prof]').forEach(b => { b.onclick = () => { haptic(18); sendPcInput({ op: 'profile', name: b.dataset.prof }); showToast('Profile Applied', b.textContent); }; });
   body.querySelector('[data-clip-sync]').onclick = () => { haptic(15); fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clip_auto_sync: clipAuto ? '0' : '1' }) }); };
+  body.querySelector('[data-prox-lock]').onclick = () => {
+    haptic(15);
+    const next = proxLock ? '0' : '1';
+    fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ presence_auto_lock: next }) });
+    showToast('Walk-Away Security', next === '1' ? 'PC will auto-lock when phone leaves desk LAN' : 'Proximity auto-lock disabled');
+  };
   body.querySelector('[data-pc-paste]').onclick = async () => {
     const latest = store.state?.clipboard?.[0]?.content;
     if (!latest) return showToast('Clipboard Empty', 'Add text in Clipboard Vault first');

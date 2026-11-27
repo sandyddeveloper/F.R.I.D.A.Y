@@ -1668,6 +1668,13 @@ class PhoneDb(context: Context) : SQLiteOpenHelper(context, "phonebox_server.db"
         return writableDatabase.delete("paired_devices", "id = ?", arrayOf(id)) > 0
     }
 
+    fun getPairedTokenById(id: String): String? {
+        if (id.isBlank()) return null
+        readableDatabase.rawQuery("SELECT device_token FROM paired_devices WHERE id = ?", arrayOf(id)).use { c ->
+            return if (c.moveToFirst()) c.getString(0) else null
+        }
+    }
+
     fun getDbSummary(): JSONObject {
         val tables = listOf(
             "pages", "kv_store", "metrics_history", "notes", "checklists",

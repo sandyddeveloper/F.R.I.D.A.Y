@@ -821,6 +821,20 @@ while ($true) {
         }
         Write-Output ((@{ id = $rid; op = 'get_processes'; items = $out }) | ConvertTo-Json -Compress -Depth 3); [Console]::Out.Flush()
       }
+      'check_bt_presence' {
+        $pat = [string]$cmd.name
+        $hit = ''
+        try {
+          $devs = Get-PnpDevice -Class Bluetooth -Status OK -ErrorAction SilentlyContinue | Where-Object {
+            $_.FriendlyName -and (-not $pat -or $_.FriendlyName -like "*$pat*") -and $_.InstanceId -match 'BTHENUM|DEV_'
+          }
+          foreach ($d in $devs) {
+            $prop = Get-PnpDeviceProperty -InstanceId $d.InstanceId -KeyName '{83DA6326-97A6-4088-9453-A1923F573B29} 15' -ErrorAction SilentlyContinue
+            if ($prop -and $prop.Data -eq $true) { $hit = [string]$d.FriendlyName; break }
+          }
+        } catch {}
+        Write-Output ((@{ id = $rid; op = 'check_bt_presence'; connected = ($hit -ne ''); matched = $hit }) | ConvertTo-Json -Compress); [Console]::Out.Flush()
+      }
       'toast'     { Show-NativeToast ([string]$cmd.title) ([string]$cmd.body) }
     }
   } catch {}

@@ -61,14 +61,20 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
+import android.util.Base64
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import java.net.URLDecoder
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
+import javax.crypto.Cipher
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 class EmbeddedServer(
     private val context: Context,
@@ -114,6 +120,12 @@ class EmbeddedServer(
 
     private val pendingPairs = ConcurrentHashMap<String, PendingPairRequest>()
     private val pairRng = SecureRandom()
+
+    fun enqueueLaptopCommand(obj: JSONObject) {
+        while (laptopInputQueue.size > 128) laptopInputQueue.poll()
+        laptopInputQueue.offer(obj)
+        laptopInputSignal.tryEmit(Unit)
+    }
 
     private fun cleanExpiredPairs() {
         val now = System.currentTimeMillis()
@@ -187,6 +199,10 @@ class EmbeddedServer(
                 get("/shared/{file...}") {
                     val path = call.parameters.getAll("file")?.joinToString("/") ?: ""
                     serveAsset(call, "www/shared/$path")
+                }
+
+                post("/_e2e") {
+                    handleE2eEnvelope(call)
                 }
 
                 get("/api/catalog") {
@@ -665,6 +681,24 @@ class EmbeddedServer(
                     if (stored != null) File(PhoneBoxApp.instance.dropDir, stored).delete()
                     notifyChange("state")
                     respondJson(call, JSONObject().put("ok", true))
+                }
+
+                post("/api/files/{id}/send-pc") {
+                    if (!checkAuth(call)) return@post
+                    val id = call.parameters["id"]?.toLongOrNull() ?: 0L
+                    val found = db.findFile(id) ?: return@post call.respondText(
+                        """{"error":"File not found"}""",
+                        ContentType.Application.Json,
+                        HttpStatusCode.NotFound
+                    )
+                    enqueueLaptopCommand(
+                        JSONObject()
+                            .put("op", "pull_file")
+                            .put("id", id)
+                            .put("filename", found.first)
+                    )
+                    AppLog.add("info", "files", "Queued PC download: ${found.first}")
+                    respondJson(call, JSONObject().put("ok", true).put("id", id).put("filename", found.first))
                 }
 
                 get("/api/wol") {
@@ -1262,6 +1296,54 @@ class EmbeddedServer(
                     call.respondBytes(bytes, parsedMime)
                 }
 
+                // --- Phone Camera Stream (Camera2) ---
+                post("/api/camera/start") {
+                    if (!checkAuth(call)) return@post
+                    val front = call.request.queryParameters["facing"] == "front"
+                    val ok = com.santhu.phonebox.system.CameraStreamController.start(context, front)
+                    respondJson(call, JSONObject().put("ok", ok).put("status", com.santhu.phonebox.system.CameraStreamController.status()))
+                }
+                post("/api/camera/stop") {
+                    if (!checkAuth(call)) return@post
+                    com.santhu.phonebox.system.CameraStreamController.stop()
+                    respondJson(call, JSONObject().put("ok", true))
+                }
+                get("/api/camera/status") {
+                    if (!checkAuth(call)) return@get
+                    respondJson(call, com.santhu.phonebox.system.CameraStreamController.status())
+                }
+                get("/api/camera.jpg") {
+                    if (!checkAuth(call)) return@get
+                    val bytes = com.santhu.phonebox.system.CameraStreamController.latestJpeg()
+                    if (bytes == null || bytes.isEmpty()) {
+                        call.respondText("""{"error":"No frame"}""", ContentType.Application.Json, io.ktor.http.HttpStatusCode.NotFound)
+                        return@get
+                    }
+                    call.response.header(io.ktor.http.HttpHeaders.CacheControl, "no-store")
+                    call.respondBytes(bytes, ContentType.Image.JPEG)
+                }
+                get("/api/camera.mjpeg") {
+                    if (!checkAuth(call)) return@get
+                    call.response.header(io.ktor.http.HttpHeaders.CacheControl, "no-store")
+                    call.respond(object : io.ktor.server.response.OutgoingContent.WriteChannelContent() {
+                        override val contentType = ContentType.parse("multipart/x-mixed-replace; boundary=fridaycam")
+                        override suspend fun writeTo(channel: io.ktor.utils.io.ByteWriteChannel) {
+                            repeat(36000) {
+                                if (channel.isClosedForWrite) return@repeat
+                                val frame = com.santhu.phonebox.system.CameraStreamController.latestJpeg()
+                                if (frame != null && frame.isNotEmpty()) {
+                                    val header = "--fridaycam\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.size}\r\n\r\n".toByteArray()
+                                    channel.writeFully(header, 0, header.size)
+                                    channel.writeFully(frame, 0, frame.size)
+                                    channel.writeFully("\r\n".toByteArray(), 0, 2)
+                                    channel.flush()
+                                }
+                                kotlinx.coroutines.delay(100L)
+                            }
+                        }
+                    })
+                }
+
                 // --- Clipboard Vault ---
                 get("/api/clipboard") {
                     if (!checkAuth(call)) return@get
@@ -1726,6 +1808,112 @@ class EmbeddedServer(
         return sb.toString()
     }
 
+    private fun deriveE2eKey(token: String): SecretKeySpec {
+        val digest = MessageDigest.getInstance("SHA-256").digest("friday-e2e:$token".toByteArray(Charsets.UTF_8))
+        return SecretKeySpec(digest, "AES")
+    }
+
+    private suspend fun handleE2eEnvelope(call: RoutingCall) {
+        val env = runCatching { JSONObject(call.receiveText()) }.getOrNull() ?: JSONObject()
+        val devId = env.optString("deviceId", "").trim()
+        val ivB64 = env.optString("iv", "").trim()
+        val tagB64 = env.optString("tag", "").trim()
+        val ctB64 = env.optString("ct", "").trim()
+        if (devId.isEmpty() || ivB64.isEmpty() || tagB64.isEmpty() || ctB64.isEmpty()) {
+            call.respondText("""{"error":"Invalid E2E envelope"}""", ContentType.Application.Json, HttpStatusCode.BadRequest)
+            return
+        }
+        val token = db.getPairedTokenById(devId)
+        if (token.isNullOrBlank()) {
+            call.respondText("""{"error":"Unknown deviceId"}""", ContentType.Application.Json, HttpStatusCode.Unauthorized)
+            return
+        }
+        val key = deriveE2eKey(token)
+        val inner = runCatching {
+            val iv = Base64.decode(ivB64, Base64.DEFAULT)
+            val ct = Base64.decode(ctB64, Base64.DEFAULT)
+            val tag = Base64.decode(tagB64, Base64.DEFAULT)
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv))
+            val plain = cipher.doFinal(ct + tag)
+            JSONObject(String(plain, Charsets.UTF_8))
+        }.getOrNull()
+        if (inner == null) {
+            call.respondText("""{"error":"Decryption failed"}""", ContentType.Application.Json, HttpStatusCode.Unauthorized)
+            return
+        }
+
+        val method = inner.optString("method", "GET").uppercase()
+        val rawPath = inner.optString("path", "/api/health").let { if (it.startsWith("/")) it else "/$it" }
+        if (rawPath.startsWith("/_e2e")) {
+            call.respondText("""{"error":"Nested E2E disallowed"}""", ContentType.Application.Json, HttpStatusCode.BadRequest)
+            return
+        }
+        val inHdrs = inner.optJSONObject("headers") ?: JSONObject()
+        val inBodyB64 = inner.optString("bodyB64", "")
+
+        var status = 502
+        var respCt = "application/json"
+        var respBytes = """{"error":"Inner call failed"}""".toByteArray(Charsets.UTF_8)
+
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val conn = (URL("http://127.0.0.1:$port$rawPath").openConnection() as HttpURLConnection).apply {
+                    requestMethod = method
+                    connectTimeout = 4000
+                    readTimeout = 20000
+                    instanceFollowRedirects = false
+                    setRequestProperty("X-PhoneBox-Forwarded", "1")
+                    setRequestProperty("X-PhoneBox-Token", token)
+                    inHdrs.keys().forEach { k ->
+                        val lk = k.lowercase()
+                        if (lk == "content-type" || lk == "accept") {
+                            setRequestProperty(k, inHdrs.optString(k, ""))
+                        }
+                    }
+                }
+                if (inBodyB64.isNotEmpty() && method in listOf("POST", "PUT", "PATCH", "DELETE")) {
+                    val buf = Base64.decode(inBodyB64, Base64.DEFAULT)
+                    conn.doOutput = true
+                    conn.setRequestProperty("Content-Length", buf.size.toString())
+                    conn.outputStream.use { it.write(buf) }
+                }
+                status = conn.responseCode
+                respCt = conn.contentType ?: "application/json"
+                val st = if (status in 200..399) conn.inputStream else (conn.errorStream ?: conn.inputStream)
+                val baos = ByteArrayOutputStream()
+                st?.use { s ->
+                    val b = ByteArray(8192)
+                    var n: Int
+                    while (s.read(b).also { n = it } != -1 && baos.size() < 4 * 1024 * 1024) baos.write(b, 0, n)
+                }
+                respBytes = baos.toByteArray()
+                conn.disconnect()
+            }
+        }
+
+        val respPlain = JSONObject().apply {
+            put("status", status)
+            put("contentType", respCt)
+            put("bodyB64", Base64.encodeToString(respBytes, Base64.NO_WRAP))
+        }.toString().toByteArray(Charsets.UTF_8)
+
+        val outIv = ByteArray(12).also { pairRng.nextBytes(it) }
+        val encCipher = Cipher.getInstance("AES/GCM/NoPadding")
+        encCipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(128, outIv))
+        val sealed = encCipher.doFinal(respPlain)
+        val encCt = sealed.copyOfRange(0, sealed.size - 16)
+        val encTag = sealed.copyOfRange(sealed.size - 16, sealed.size)
+
+        respondJson(call, JSONObject().apply {
+            put("ok", true)
+            put("e2e", true)
+            put("iv", Base64.encodeToString(outIv, Base64.NO_WRAP))
+            put("tag", Base64.encodeToString(encTag, Base64.NO_WRAP))
+            put("ct", Base64.encodeToString(encCt, Base64.NO_WRAP))
+        })
+    }
+
     private data class WidgetSpec(
         val type: String,
         val name: String,
@@ -1768,7 +1956,7 @@ class EmbeddedServer(
             WidgetSpec("pc_audio_stage", "3D Audio Devices & Mixer", "Music", "laptop", "Interactive 3D audio device stage, output switcher & per-app mixer", 5, 6),
             WidgetSpec("pc_deck", "PC App & Control Deck", "Control", "laptop", "4x3 Windows app launcher, active window focus & system keys", 12, 6),
             WidgetSpec("pc_trackpad", "Wireless Trackpad & Keys", "Control", "laptop", "Touch cursor, scroll rail, keyboard, hotkeys & Call Auto-Mute", 6, 6),
-            WidgetSpec("pc_screen", "Live Screen Peek", "Control", "laptop", "Real-time laptop monitor snapshots & tap-to-click", 6, 6),
+            WidgetSpec("pc_screen", "Live Screen Peek + Camera", "Control", "laptop", "Real-time laptop monitor snapshots, tap-to-click & phone Camera2 MJPEG feed with OBS link", 6, 6),
             WidgetSpec("pc_display", "Display, Profiles & Clip", "Control", "laptop", "Screen brightness slider, audio presets & clipboard auto-sync", 5, 6),
             WidgetSpec("pc_windows", "Open PC Windows Manager", "Control", "laptop", "Focus, snap left/right, minimize or close laptop windows", 7, 6),
             // DEV / AI WIDGETS

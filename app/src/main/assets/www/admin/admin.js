@@ -64,9 +64,49 @@ function markDirty(f = true) { dirty = f; document.getElementById('unsavedBadge'
 const BASE_PREFIX = location.pathname.includes('/r/') ? location.pathname.replace(/\/admin.*$/, '') : '';
 function apiUrl(u) { return BASE_PREFIX && u.startsWith('/') ? BASE_PREFIX + u : u; }
 
+async function e2eRelayFetch(url, opts, token, devId) {
+  const rawKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`friday-e2e:${token}`));
+  const aesKey = await crypto.subtle.importKey('raw', rawKey, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  let bodyB64 = '';
+  if (typeof opts.body === 'string' && opts.body.length) {
+    bodyB64 = btoa(unescape(encodeURIComponent(opts.body)));
+  }
+  const inner = JSON.stringify({
+    method: (opts.method || 'GET').toUpperCase(),
+    path: url,
+    headers: opts.headers || {},
+    bodyB64
+  });
+  const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, new TextEncoder().encode(inner)));
+  const ct = sealed.slice(0, sealed.length - 16);
+  const tag = sealed.slice(sealed.length - 16);
+  const b64 = (arr) => btoa(String.fromCharCode(...arr));
+  const outRes = await fetch(apiUrl('/_e2e'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deviceId: devId, iv: b64(iv), tag: b64(tag), ct: b64(ct) })
+  });
+  if (outRes.status === 401) return outRes;
+  const env = await outRes.json();
+  const unB64 = (s) => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const cBytes = unB64(env.ct), tBytes = unB64(env.tag), comb = new Uint8Array(cBytes.length + tBytes.length);
+  comb.set(cBytes, 0); comb.set(tBytes, cBytes.length);
+  const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unB64(env.iv) }, aesKey, comb);
+  const innerResp = JSON.parse(new TextDecoder().decode(plainBuf));
+  const rawTxt = innerResp.bodyB64 ? decodeURIComponent(escape(atob(innerResp.bodyB64))) : '';
+  return new Response(rawTxt, { status: innerResp.status || 200, headers: { 'Content-Type': innerResp.contentType || 'application/json' } });
+}
+
 async function api(url, opts = {}) {
   const pin = localStorage.getItem('pb_pin') || '';
   const token = localStorage.getItem('pb_token') || '';
+  const devId = localStorage.getItem('pb_dev_id') || '';
+  if (BASE_PREFIX && token && devId && window.crypto?.subtle && !(opts.body instanceof FormData)) {
+    const res = await e2eRelayFetch(url, opts, token, devId);
+    if (res.status === 401) { document.getElementById('pinModal').hidden = false; throw new Error('AUTH'); }
+    return res.json();
+  }
   const headers = {
     ...(opts.headers || {}),
     ...(pin ? { 'X-PhoneBox-Pin': pin } : {}),
@@ -97,6 +137,7 @@ document.getElementById('pinSubmit').onclick = async () => {
     }).then(r => r.json()).catch(() => ({}));
     if (res.ok && res.token) {
       localStorage.setItem('pb_token', res.token);
+      if (res.deviceId) localStorage.setItem('pb_dev_id', res.deviceId);
       activePairReqId = '';
       document.getElementById('pinModal').hidden = true;
       initRealtime();
@@ -799,6 +840,9 @@ function renderSetup() {
     document.getElementById('setRelayEnabled').checked = s.relay_enabled === '1';
     document.getElementById('setRelayUrl').value = s.relay_url || '';
     document.getElementById('setRelayRoom').value = s.relay_room || '';
+    document.getElementById('setProxAutoLock').checked = s.presence_auto_lock === '1';
+    document.getElementById('setProxProfile').value = s.presence_arrive_profile || 'coding';
+    document.getElementById('setProxBt').value = s.presence_bt_device || '';
   }
 
   const pairedDevs = Array.isArray(state.pairedDevices) ? state.pairedDevices : [];
@@ -927,7 +971,10 @@ function saveAllPrefs() {
       pin: document.getElementById('setPin').value,
       remote_url: document.getElementById('setRemoteUrl').value.trim(),
       relay_enabled: document.getElementById('setRelayEnabled').checked ? '1' : '0',
-      relay_url: document.getElementById('setRelayUrl').value.trim()
+      relay_url: document.getElementById('setRelayUrl').value.trim(),
+      presence_auto_lock: document.getElementById('setProxAutoLock').checked ? '1' : '0',
+      presence_arrive_profile: document.getElementById('setProxProfile').value,
+      presence_bt_device: document.getElementById('setProxBt').value.trim()
     })
   }).then(() => showToast('Preferences, Security & Relay saved!'));
 }

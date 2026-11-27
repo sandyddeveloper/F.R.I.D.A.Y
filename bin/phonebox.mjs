@@ -191,6 +191,79 @@ async function cmdUnpair() {
   console.log('Unpaired laptop and removed F.R.I.D.A.Y. credentials.');
 }
 
+function cmdInstallService() {
+  ensureStateDir();
+  if (process.platform === 'win32') {
+    const vbsPath = path.join(STATE_DIR, 'launch-friday.vbs');
+    const q = (s) => `"${String(s).replace(/"/g, '""')}"`;
+    const vbs = `CreateObject("WScript.Shell").Run ${q(`${q(process.execPath)} ${q(TELEMETRY_PATH)} --daemon`)}, 0, False\r\n`;
+    fs.writeFileSync(vbsPath, vbs, 'utf8');
+    execFileSync('schtasks.exe', [
+      '/Create', '/TN', 'FRIDAY-Bridge-Daemon', '/SC', 'ONLOGON',
+      '/RL', 'LIMITED', '/F', '/TR', `wscript.exe //B //Nologo "${vbsPath}"`
+    ], { stdio: 'inherit', windowsHide: true });
+    console.log('Installed Windows auto-start task: FRIDAY-Bridge-Daemon (hidden on logon).');
+    return;
+  }
+  if (process.platform === 'darwin') {
+    const plistDir = path.join(os.homedir(), 'Library', 'LaunchAgents');
+    fs.mkdirSync(plistDir, { recursive: true });
+    const plistPath = path.join(plistDir, 'com.friday.control.plist');
+    const plist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.friday.control</string>
+  <key>ProgramArguments</key><array><string>${process.execPath}</string><string>${TELEMETRY_PATH}</string><string>--daemon</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><false/>
+</dict></plist>\n`;
+    fs.writeFileSync(plistPath, plist, 'utf8');
+    try { execFileSync('launchctl', ['unload', plistPath], { stdio: 'ignore' }); } catch (_) {}
+    execFileSync('launchctl', ['load', plistPath], { stdio: 'inherit' });
+    console.log(`Installed macOS LaunchAgent: ${plistPath}`);
+    return;
+  }
+  const unitDir = path.join(os.homedir(), '.config', 'systemd', 'user');
+  fs.mkdirSync(unitDir, { recursive: true });
+  const unitPath = path.join(unitDir, 'friday-bridge.service');
+  const unit = `[Unit]
+Description=F.R.I.D.A.Y. Control Center Host Bridge
+After=network-online.target
+
+[Service]
+ExecStart="${process.execPath}" "${TELEMETRY_PATH}" --daemon
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+`;
+  fs.writeFileSync(unitPath, unit, 'utf8');
+  execFileSync('systemctl', ['--user', 'daemon-reload'], { stdio: 'ignore' });
+  execFileSync('systemctl', ['--user', 'enable', '--now', 'friday-bridge.service'], { stdio: 'inherit' });
+  console.log(`Installed Linux systemd user service: ${unitPath}`);
+}
+
+function cmdUninstallService() {
+  if (process.platform === 'win32') {
+    try { execFileSync('schtasks.exe', ['/Delete', '/TN', 'FRIDAY-Bridge-Daemon', '/F'], { stdio: 'ignore', windowsHide: true }); } catch (_) {}
+    try { fs.unlinkSync(path.join(STATE_DIR, 'launch-friday.vbs')); } catch (_) {}
+    console.log('Removed Windows auto-start task: FRIDAY-Bridge-Daemon.');
+    return;
+  }
+  if (process.platform === 'darwin') {
+    const plistPath = path.join(os.homedir(), 'Library', 'LaunchAgents', 'com.friday.control.plist');
+    try { execFileSync('launchctl', ['unload', plistPath], { stdio: 'ignore' }); } catch (_) {}
+    try { fs.unlinkSync(plistPath); } catch (_) {}
+    console.log('Removed macOS LaunchAgent.');
+    return;
+  }
+  const unitPath = path.join(os.homedir(), '.config', 'systemd', 'user', 'friday-bridge.service');
+  try { execFileSync('systemctl', ['--user', 'disable', '--now', 'friday-bridge.service'], { stdio: 'ignore' }); } catch (_) {}
+  try { fs.unlinkSync(unitPath); } catch (_) {}
+  console.log('Removed Linux systemd user service.');
+}
+
 const cmd = (process.argv[2] || 'help').toLowerCase();
 if (cmd === 'connect' || cmd === 'pair') {
   cmdConnect(process.argv[3]).catch(e => { console.error(e); process.exit(1); });
@@ -210,12 +283,18 @@ if (cmd === 'connect' || cmd === 'pair') {
   cmdStatus();
 } else if (cmd === 'unpair') {
   cmdUnpair();
+} else if (cmd === 'install-service') {
+  cmdInstallService();
+} else if (cmd === 'uninstall-service') {
+  cmdUninstallService();
 } else {
   console.log(`F.R.I.D.A.Y. CLI v2.0 (Open Source)
 Usage:
-  friday connect [url]   Discover phone or connect via LAN/Tailscale/Relay & confirm 6-digit code
-  friday start           Start laptop telemetry & control daemon
-  friday stop            Stop background daemon
-  friday status          Check phone reachability (LAN / Relay) & pairing state
-  friday unpair          Revoke access on phone & clear local credentials`);
+  friday connect [url]      Discover phone or connect via LAN/Tailscale/Relay & confirm 6-digit code
+  friday start              Start laptop telemetry & control daemon
+  friday stop               Stop background daemon
+  friday status             Check phone reachability (LAN / Relay) & pairing state
+  friday install-service    Auto-start F.R.I.D.A.Y. bridge silently on system login
+  friday uninstall-service  Remove auto-start service
+  friday unpair             Revoke access on phone & clear local credentials`);
 }

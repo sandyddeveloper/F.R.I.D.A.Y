@@ -1208,3 +1208,16 @@ html, body {
 
 
 
+
+/* --- Voice Command Button active state --- */
+#btnVoice.voice-on {
+  background: color-mix(in srgb, var(--err) 22%, transparent);
+  border-color: color-mix(in srgb, var(--err) 55%, transparent);
+  color: var(--err);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--err) 40%, transparent);
+  animation: voicePulse 1s ease-in-out infinite;
+}
+@keyframes voicePulse {
+  0%, 100% { box-shadow: 0 0 8px color-mix(in srgb, var(--err) 40%, transparent); }
+  50%       { box-shadow: 0 0 18px color-mix(in srgb, var(--err) 65%, transparent); }
+}

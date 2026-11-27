@@ -6,13 +6,14 @@ import path from 'node:path';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { STATE_DIR, ensureStateDir, httpJson, httpRaw, resolveLiveTarget } from './phonebox-client.mjs';
+import { STATE_DIR, ensureStateDir, httpJson, httpRaw, httpRawBuffer, resolveLiveTarget } from './phonebox-client.mjs';
 
 const execFileAsync = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SELF_PATH = fileURLToPath(import.meta.url);
 const LOCK_PATH = path.join(STATE_DIR, 'telemetry.lock');
 const WINHOST_PATH = path.join(HERE, 'phonebox-winhost.ps1');
+const UNIXHOST_PATH = path.join(HERE, 'phonebox-unixhost.mjs');
 const POPUP_PATH = path.join(HERE, 'phonebox-notif-popup.ps1');
 ensureStateDir();
 
@@ -42,6 +43,11 @@ let appsSyncedOnce = false;
 let fastPushFn = null;
 let lastAlivePids = new Set();
 let lastPidCpuMap = new Map();
+let presenceWasLocal = false;
+let presenceAwayTicks = 0;
+let lastPresenceLockAt = 0;
+let lastBtCheckAt = 0;
+let lastBtConnected = false;
 const watchIdleStreaks = new Map();
 const triggeredWatchIds = new Set();
 
@@ -438,7 +444,25 @@ function friendlyAppName(procName, desc) {
 }
 
 async function sampleRawProcesses() {
-  if (process.platform !== 'win32') return [];
+  if (process.platform !== 'win32') {
+    try {
+      const { stdout } = await execFileAsync('ps', ['-eo', 'pid=,rss=,time=,comm='], { timeout: 2200 });
+      const rows = [];
+      for (const ln of String(stdout || '').split(/\r?\n/)) {
+        const m = ln.trim().match(/^(\d+)\s+(\d+)\s+(\S+)\s+(.+)$/);
+        if (!m) continue;
+        const pid = Number(m[1]);
+        const rssBytes = Number(m[2]) * 1024;
+        const parts = m[3].split(/[:-]/).map(Number);
+        const cpuSec = parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : (parts.length === 2 ? parts[0] * 60 + parts[1] : 0);
+        const name = path.basename(m[4].trim());
+        rows.push({ i: pid, n: name, d: name, f: m[4].trim(), p: pid <= 2, r: rssBytes, c: Number.isFinite(cpuSec) ? cpuSec : 0 });
+      }
+      return rows;
+    } catch (_) {
+      return [];
+    }
+  }
   if (winHostReady) {
     const res = await requestWinCmd({ op: 'get_processes' }, 3500);
     if (res && Array.isArray(res.items)) return res.items;
@@ -633,7 +657,11 @@ async function handlePendingLaptopCommands(base, pin) {
       let killed = 0;
       for (const pid of pids) {
         try {
-          await execFileAsync('taskkill', ['/F', '/T', '/PID', String(pid)], { timeout: 2500, windowsHide: true });
+          if (process.platform === 'win32') {
+            await execFileAsync('taskkill', ['/F', '/T', '/PID', String(pid)], { timeout: 2500, windowsHide: true });
+          } else {
+            process.kill(pid, 'SIGTERM');
+          }
           killed++;
         } catch (_) {}
       }
@@ -663,15 +691,12 @@ export async function collectLaptopTelemetrySample(sampleWindowMs = 700) {
 }
 
 function ensureWinHost() {
-  if (process.platform !== 'win32') return null;
   if (winHostProc && !winHostProc.killed) return winHostProc;
   winHostReady = false;
   try {
-    const child = spawn(
-      'powershell.exe',
-      ['-NoProfile', '-Sta', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-File', WINHOST_PATH],
-      { stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true }
-    );
+    const child = process.platform === 'win32'
+      ? spawn('powershell.exe', ['-NoProfile', '-Sta', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-File', WINHOST_PATH], { stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true })
+      : spawn(process.execPath, [UNIXHOST_PATH], { stdio: ['pipe', 'pipe', 'ignore'] });
     winHostProc = child;
     let buf = '';
     child.stdout.on('data', (chunk) => {
@@ -854,6 +879,21 @@ async function processLaptopInputEvent(ev, targetRef) {
         2000
       );
     }
+  } else if (ev.op === 'pull_file') {
+    if (!ev.id || !targetRef?.base) return;
+    const dl = await httpRawBuffer('GET', `${targetRef.base}/api/files/${encodeURIComponent(String(ev.id))}`, null, {}, targetRef, 30000);
+    if (dl.ok && dl.buffer) {
+      const dropRoot = path.join(os.homedir(), 'Downloads', 'F.R.I.D.A.Y.');
+      try { fs.mkdirSync(dropRoot, { recursive: true }); } catch (_) {}
+      const rawName = path.basename(String(ev.filename || `friday-${ev.id}.bin`)).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || `friday-${ev.id}.bin`;
+      const parts = path.parse(rawName);
+      let dest = path.join(dropRoot, rawName);
+      for (let i = 1; fs.existsSync(dest) && i < 50; i++) {
+        dest = path.join(dropRoot, `${parts.name}-${i}${parts.ext}`);
+      }
+      fs.writeFileSync(dest, dl.buffer);
+      sendWinCmd({ op: 'toast', title: 'F.R.I.D.A.Y. File Drop', body: `Saved ${path.basename(dest)} to Downloads\\F.R.I.D.A.Y.` });
+    }
   } else if (ev.op === 'scan_apps') {
     await syncInstalledAppsToPhone(targetRef);
   } else if (
@@ -874,6 +914,42 @@ function fmtElapsedMs(ms) {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+async function evaluateProximityPresence(t) {
+  const isLocalOnline = Boolean(t?.online && !t.isRelay);
+  if (isLocalOnline) {
+    if (!presenceWasLocal && presenceAwayTicks >= 10) {
+      const prof = String(latestSettings.presence_arrive_profile || 'coding');
+      if (prof && prof !== 'none') {
+        await requestWinCmd({ op: 'profile', name: prof }, 2500);
+        sendWinCmd({ op: 'toast', title: 'Welcome Back · F.R.I.D.A.Y.', body: `Phone back on LAN · Scene: ${prof}` });
+      }
+    }
+    presenceWasLocal = true;
+    presenceAwayTicks = 0;
+    return;
+  }
+  if (!presenceWasLocal) return;
+
+  const btName = String(latestSettings.presence_bt_device || '').trim();
+  if (btName && winHostReady && Date.now() - lastBtCheckAt > 6000) {
+    lastBtCheckAt = Date.now();
+    const res = await requestWinCmd({ op: 'check_bt_presence', name: btName }, 1600);
+    lastBtConnected = Boolean(res?.connected);
+  }
+  if (btName && lastBtConnected) {
+    presenceAwayTicks = 0;
+    return;
+  }
+
+  presenceAwayTicks++;
+  if (presenceAwayTicks >= 10 && latestSettings.presence_auto_lock === '1' && Date.now() - lastPresenceLockAt > 90_000) {
+    lastPresenceLockAt = Date.now();
+    presenceWasLocal = false;
+    sendWinCmd({ op: 'system_act', act: 'screen_off' });
+    sendWinCmd({ op: 'system_act', act: 'lock' });
+  }
 }
 
 async function evaluateProcessWatches(targetRef) {
@@ -1109,6 +1185,7 @@ async function runDaemon() {
     } else if (Date.now() - lastOnlineAt > 15 * 60 * 1000) {
       cleanupAndExit();
     }
+    await evaluateProximityPresence(t);
   };
   fastPushFn = () => { if (!running) { running = true; tick().catch(() => {}).finally(() => { running = false; }); } };
 

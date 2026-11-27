@@ -437,6 +437,9 @@
                   <label class="chk-line"><input type="checkbox" id="setRelayEnabled"> Connect out to Self-Host Relay (Access anywhere over 4G/5G)</label>
                   <div class="row-gap"><span class="muted" style="min-width:95px">Relay URL</span><input id="setRelayUrl" class="inp" placeholder="https://relay.example.com"></div>
                   <div class="row-gap"><span class="muted" style="min-width:95px">Relay Room</span><input id="setRelayRoom" class="inp" readonly></div>
+                  <label class="chk-line"><input type="checkbox" id="setProxAutoLock"> Proximity Walk-Away Auto-Lock (locks PC ~20s after phone leaves LAN/BT)</label>
+                  <div class="row-gap"><span class="muted" style="min-width:95px">Arrive Scene</span><select id="setProxProfile" class="inp"><option value="coding">Coding</option><option value="music">Music</option><option value="meeting">Meeting</option><option value="night">Night</option><option value="none">None</option></select></div>
+                  <div class="row-gap"><span class="muted" style="min-width:95px">Nearby BT</span><input id="setProxBt" class="inp" placeholder="Optional BT phone name (e.g. Vivo)"></div>
                   <button class="btn primary" id="btnSaveSettings2">Save Security, Relay &amp; Display</button>
                 </div>
               </div>
