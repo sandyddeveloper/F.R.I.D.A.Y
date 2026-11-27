@@ -1,8 +1,6 @@
 name: Deploy F.R.I.D.A.Y. Landing Page
 
 on:
-  push:
-    branches: ["main", "master"]
   workflow_dispatch:
 
 permissions:
