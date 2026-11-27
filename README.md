@@ -49,33 +49,43 @@ Most "phone-to-PC" apps stop at basic notifications. **F.R.I.D.A.Y.** turns an a
 <table>
   <tr>
     <td width="50%" align="center">
-      <img src="docs/assets/screens/laptop-hw.png" alt="Laptop Hardware & Telemetry" width="100%" />
+      <img src="docs/assets/screens/laptop-hw.png" alt="Laptop Hardware & Telemetry" width="100%" /><br />
       <b>Laptop Telemetry & Control Deck</b>
     </td>
     <td width="50%" align="center">
-      <img src="docs/assets/screens/mobile-home.png" alt="Mobile Home" width="100%" />
-      <b>Mobile Command Home</b>
+      <img src="docs/assets/screens/mobile-hw.png" alt="3D Mobile Hardware Core" width="100%" /><br />
+      <b>3D Mobile Hardware Core</b>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <img src="docs/assets/screens/mobile-hw.png" alt="3D Mobile Hardware Core" width="100%" />
-      <b>3D Mobile Hardware Core</b>
+      <img src="docs/assets/screens/pair-request.png" alt="6-Digit Mutual Pairing" width="100%" /><br />
+      <b>6-Digit Mutual Pairing Gate</b>
     </td>
     <td width="50%" align="center">
-      <img src="docs/assets/screens/pair-request.png" alt="6-Digit Mutual Pairing" width="100%" />
-      <b>6-Digit Mutual Pairing Gate</b>
+      <img src="docs/assets/screens/all-pages.png" alt="All Pages Overview" width="100%" /><br />
+      <b>All Pages Overview</b>
     </td>
   </tr>
 </table>
 
-<details>
-<summary>View All Pages Overview</summary>
-<br />
-<p align="center">
-  <img src="docs/assets/screens/all-pages.png" alt="All Pages Overview" width="90%" />
-</p>
-</details>
+<table>
+  <tr>
+    <td width="270" align="center" valign="middle">
+      <img src="docs/assets/screens/mobile-home.png" alt="Mobile Command Home" width="240" />
+    </td>
+    <td valign="middle">
+      <h3>Mobile Command Home (Portrait & Landscape)</h3>
+      <p>Designed to adapt cleanly whether your phone sits upright on a MagSafe stand or sideways under your monitor:</p>
+      <ul>
+        <li><b>Instant QR + 6-Digit Pairing</b> — Connect any laptop in seconds</li>
+        <li><b>Quick Controls</b> — One-tap Torch, Mute, Sleep, and Brightness slider</li>
+        <li><b>Live Hardware & Sensors</b> — Lux, proximity, battery voltage, and thermals</li>
+        <li><b>Quick Notes & Task Queue</b> — Synced via local SQLite WAL</li>
+      </ul>
+    </td>
+  </tr>
+</table>
 
 ---
 
