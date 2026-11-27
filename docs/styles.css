@@ -12,6 +12,24 @@ body {
   color: var(--color-ink);
 }
 
+.skip {
+  position: absolute;
+  left: var(--space-md);
+  top: calc(-1 * var(--space-3xl));
+  z-index: var(--z-toast);
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-pill);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.skip:focus-visible {
+  top: var(--space-md);
+}
+
 h1, h2, h3 {
   font-weight: var(--display-weight);
   line-height: 1.04;
@@ -158,13 +176,13 @@ html:not(.js) [role="tabpanel"][hidden] {
 }
 
 .hero {
-  padding-block: var(--space-xl) var(--section-gap-s);
+  padding-block: var(--space-xl) var(--space-2xl);
 }
 
 .hero__grid {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: var(--space-2xl);
+  gap: var(--space-xl);
   align-items: center;
 }
 
@@ -173,6 +191,7 @@ html:not(.js) [role="tabpanel"][hidden] {
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-md);
+  min-width: 0;
 }
 
 .hero__copy h1 {
@@ -207,6 +226,7 @@ html:not(.js) [role="tabpanel"][hidden] {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
+  min-width: 0;
 }
 
 .capture {
@@ -229,6 +249,10 @@ html:not(.js) [role="tabpanel"][hidden] {
 }
 
 .section {
+  padding-block: var(--space-2xl) 0;
+}
+
+.section--next {
   padding-block: var(--section-gap) 0;
 }
 
@@ -432,6 +456,9 @@ html:not(.js) [role="tabpanel"][hidden] {
   font-family: var(--font-outlier);
   font-size: var(--text-sm);
   color: var(--color-ink-2);
+  overflow-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .copy-note {
@@ -535,6 +562,17 @@ html:not(.js) [role="tabpanel"][hidden] {
   .section__head {
     margin-bottom: var(--space-xl);
   }
+  .site-nav__bar {
+    gap: var(--space-sm);
+  }
+  .hero__copy h1 {
+    font-size: clamp(2rem, 8.2vw, 3rem);
+  }
+  .cmd-table,
+  .cmd-table tbody {
+    display: block;
+    width: 100%;
+  }
   .cmd-table thead {
     display: none;
   }
@@ -548,5 +586,6 @@ html:not(.js) [role="tabpanel"][hidden] {
   .cmd-table td {
     padding: 0;
     border: 0;
+    min-width: 0;
   }
 }
